@@ -2,7 +2,7 @@ export type ProjectType = 'web' | 'infrastructure' | 'both'
 export type ProjectStatus = 'in_progress' | 'review' | 'completed' | 'archived'
 export type SeverityLevel = 'critical' | 'high' | 'medium' | 'low' | 'info'
 export type FindingCategory = 'web' | 'network' | 'system' | 'social_engineering' | 'physical' | 'other'
-export type FindingStatus = 'open' | 'in_progress' | 'mitigated' | 'accepted' | 'false_positive'
+export type FindingStatus = 'open' | 'in_progress' | 'in_review' | 'resolved' | 'mitigated' | 'accepted' | 'false_positive'
 export type ReportFormat = 'pdf' | 'pptx'
 export type ReportStatus = 'pending' | 'generating' | 'ready' | 'error'
 
