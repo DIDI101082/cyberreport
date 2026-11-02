@@ -27,80 +27,80 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center"
-      style={{
-        background: 'linear-gradient(135deg, #1a56db 0%, #1e40af 40%, #1d4ed8 70%, #2563eb 100%)',
-      }}
-    >
-      {/* Card */}
-      <div
-        className="w-full max-w-sm mx-4 rounded-2xl p-8"
-        style={{
-          background: 'rgba(255,255,255,0.12)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255,255,255,0.2)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-        }}
-      >
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <span className="text-white font-bold text-2xl tracking-tight" style={{ fontFamily: 'helvetica, arial, sans-serif' }}>
-            <span style={{ opacity: 0.9 }}>&#47;&#47;accusys</span>
-          </span>
-          <span className="text-white/40 text-2xl font-thin">|</span>
-          <span className="text-white font-bold text-2xl" style={{ color: '#60a5fa' }}>CyberReport</span>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-blue-600"
+      style={{ background: 'linear-gradient(135deg, #1a56db 0%, #1e3a8a 100%)' }}>
+
+      <div className="w-full max-w-sm px-4">
+        <div className="rounded-2xl p-8"
+          style={{
+            background: 'rgba(255,255,255,0.13)',
+            border: '1px solid rgba(255,255,255,0.22)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+            backdropFilter: 'blur(12px)',
+          }}>
+
+          {/* Logo */}
+          <div className="text-center mb-6">
+            <div className="text-2xl font-bold mb-5">
+              <span className="text-white">//accusys</span>
+              <span className="text-white opacity-40 mx-2">|</span>
+              <span style={{ color: '#93c5fd' }}>CyberReport</span>
+            </div>
+            <p className="text-white font-semibold text-lg">Bienvenido</p>
+            <p className="text-white/70 text-sm mt-1">Ingresá con tu cuenta de la empresa</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4 mt-6">
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-1.5">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                placeholder="usuario@empresa.com"
+                className="w-full rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none"
+                style={{
+                  background: 'rgba(255,255,255,0.15)',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-1.5">Contraseña</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                className="w-full rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none"
+                style={{
+                  background: 'rgba(255,255,255,0.15)',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                }}
+              />
+            </div>
+
+            {error && (
+              <p className="text-red-300 text-sm text-center">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-60 mt-2"
+              style={{ background: 'rgba(255,255,255,0.95)', color: '#1d4ed8' }}
+            >
+              {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+            </button>
+          </form>
         </div>
 
-        <p className="text-center text-white font-semibold text-lg mb-1">Bienvenido</p>
-        <p className="text-center text-white/70 text-sm mb-6">Ingresá con tu cuenta de la empresa</p>
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-              style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', color: 'white' }}
-              placeholder="usuario@empresa.com"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-1">Contraseña</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-              style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', color: 'white' }}
-              placeholder="••••••••"
-            />
-          </div>
-
-          {error && (
-            <p className="text-sm text-red-300 text-center">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-60"
-            style={{ background: 'rgba(255,255,255,0.95)', color: '#1d4ed8' }}
-          >
-            {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
-          </button>
-        </form>
+        <p className="text-center text-white/40 text-xs mt-6">
+          © 2026 Accusys. Todos los derechos reservados.
+        </p>
       </div>
-
-      {/* Footer */}
-      <p className="mt-6 text-white/40 text-xs">
-        © 2026 Accusys. Todos los derechos reservados.
-      </p>
     </div>
   )
 }
