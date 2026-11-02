@@ -129,7 +129,8 @@ export async function generatePDF(
     },
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 0) {
-        const severity = data.row.raw[0] as string
+        const rawRow = data.row.raw as Record<number, unknown>
+        const severity = rawRow[0] as string
         const severityEntry = Object.entries(SEVERITY_CONFIG).find(([, v]) => v.label === severity)
         if (severityEntry) {
           const [r, g, b] = SEVERITY_COLORS[severityEntry[0] as SeverityLevel]
