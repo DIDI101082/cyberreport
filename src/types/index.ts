@@ -54,7 +54,9 @@ export interface Finding {
   impact?: string
   recommendation?: string
   cvss_score?: number
+  cvss_vector?: string
   cve_id?: string
+  cwe_id?: string
   ai_generated: boolean
   evidence_urls?: string[]
   evidence?: string
