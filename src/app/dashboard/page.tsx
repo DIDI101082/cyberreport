@@ -296,9 +296,11 @@ export default async function DashboardPage() {
                     <p className="text-white/30 text-xs">Sin hallazgos críticos pendientes</p>
                   </div>
                 ) : recentFindings.map(f => {
-                  const proj = f.projects as { name: string } | null
+                  const projRaw = f.projects
+                  const proj = (Array.isArray(projRaw) ? projRaw[0] : projRaw) as { name: string } | null
+                  const projectId = (f as Record<string, unknown>).project_id as string ?? ''
                   return (
-                    <Link key={f.id} href={`/projects/${(f as { project_id?: string }).project_id ?? ''}/findings/${f.id}`}>
+                    <Link key={f.id} href={`/projects/${projectId}/findings/${f.id}`}>
                       <div className="flex items-start gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors group">
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${SEVERITY_DOT[f.severity]}`} />
                         <div className="flex-1 min-w-0">
