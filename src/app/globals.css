@@ -5,53 +5,35 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-base:    #0a0a0c;
-  --bg-surface: #111114;
-  --bg-card:    rgba(255,255,255,0.03);
-  --border:     rgba(255,255,255,0.07);
-  --text:       #ffffff;
-  --text-muted: rgba(255,255,255,0.4);
+  --bg-base:      #0f1729;
+  --bg-sidebar:   #0a1020;
+  --bg-surface:   #131f35;
+  --bg-card:      rgba(255,255,255,0.05);
+  --border:       rgba(255,255,255,0.08);
+  --accent:       #2563eb;
+  --accent-light: #3b82f6;
+  --text:         #ffffff;
+  --text-muted:   rgba(255,255,255,0.45);
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html {
-  background-color: var(--bg-base);
-}
+html { background-color: var(--bg-base); }
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background-color: var(--bg-base);
+  background: linear-gradient(160deg, #0f1e3d 0%, #0a1020 60%, #0d1628 100%);
+  min-height: 100vh;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar dark */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.1);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.2);
-}
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
 
-/* Mono para código */
-code, pre, .font-mono {
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
-}
-
-/* Selection */
-::selection {
-  background: rgba(59, 130, 246, 0.35);
-  color: white;
-}
+code, pre, .font-mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }
+::selection { background: rgba(59,130,246,0.4); color: white; }

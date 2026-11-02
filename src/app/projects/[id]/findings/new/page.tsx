@@ -17,6 +17,14 @@ const CATEGORIES = [
   { value: 'other',          label: 'Otro' },
 ]
 
+const SEV_ACTIVE: Record<string, { bg: string; color: string; border: string }> = {
+  critical: { bg: 'rgba(239,68,68,0.18)',  color: '#fca5a5', border: 'rgba(239,68,68,0.35)' },
+  high:     { bg: 'rgba(249,115,22,0.15)', color: '#fdba74', border: 'rgba(249,115,22,0.35)' },
+  medium:   { bg: 'rgba(234,179,8,0.15)',  color: '#fde047', border: 'rgba(234,179,8,0.35)' },
+  low:      { bg: 'rgba(96,165,250,0.15)', color: '#93c5fd', border: 'rgba(96,165,250,0.35)' },
+  info:     { bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.65)', border: 'rgba(255,255,255,0.2)' },
+}
+
 export default function NewFindingPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -39,10 +47,7 @@ export default function NewFindingPage() {
   const [generating, setGenerating] = useState(false)
 
   async function handleAIGenerate() {
-    if (!form.title) {
-      alert('Ingresá el título del hallazgo primero')
-      return
-    }
+    if (!form.title) { alert('Ingresá el título del hallazgo primero'); return }
     setGenerating(true)
     try {
       const res = await fetch('/api/ai/generate-finding', {
@@ -72,16 +77,9 @@ export default function NewFindingPage() {
       ...form,
       project_id: params.id,
       cvss_score: form.cvss_score ? parseFloat(form.cvss_score) : null,
-      affected_components: form.affected_components
-        ? form.affected_components.split('\n').filter(Boolean)
-        : [],
+      affected_components: form.affected_components ? form.affected_components.split('\n').filter(Boolean) : [],
     }
-    const { data, error } = await supabase
-      .from('findings')
-      .insert(payload)
-      .select('id')
-      .single()
-
+    const { data, error } = await supabase.from('findings').insert(payload).select('id').single()
     if (!error && data) {
       router.push(`/projects/${params.id}`)
     } else {
@@ -91,185 +89,137 @@ export default function NewFindingPage() {
   }
 
   return (
-    <div className="p-8 max-w-3xl">
-      <Link
-        href={`/projects/${params.id}`}
-        className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6"
-      >
-        <ArrowLeft className="w-4 h-4" /> Volver al proyecto
-      </Link>
+    <>
+      <style>{`
+        .nf-wrap { padding: 24px 28px; max-width: 700px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: #fff; }
+        .nf-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(255,255,255,0.4); text-decoration: none; margin-bottom: 20px; transition: color 0.12s; }
+        .nf-back:hover { color: rgba(255,255,255,0.8); }
+        .nf-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+        .nf-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0; }
+        .btn-ai { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; background: rgba(124,58,237,0.25); border: 1px solid rgba(167,139,250,0.35); color: #c084fc; font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; font-family: inherit; transition: all 0.12s; }
+        .btn-ai:hover { background: rgba(124,58,237,0.4); }
+        .btn-ai:disabled { opacity: 0.5; cursor: not-allowed; }
+        .nf-field { margin-bottom: 16px; }
+        .nf-label { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px; }
+        .nf-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; padding: 9px 12px; font-size: 13px; color: #fff; font-family: inherit; outline: none; box-sizing: border-box; transition: border-color 0.12s; }
+        .nf-input:focus { border-color: rgba(59,130,246,0.5); background: rgba(255,255,255,0.08); }
+        .nf-input option { background: #131f35; }
+        .nf-textarea { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; padding: 9px 12px; font-size: 13px; color: #fff; font-family: inherit; outline: none; box-sizing: border-box; resize: none; transition: border-color 0.12s; }
+        .nf-textarea:focus { border-color: rgba(59,130,246,0.5); }
+        .nf-textarea.mono { font-family: monospace; font-size: 12px; }
+        .nf-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .sev-btn { width: 100%; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.45); cursor: pointer; font-family: inherit; text-align: left; transition: all 0.12s; margin-bottom: 5px; }
+        .sev-btn:last-child { margin-bottom: 0; }
+        .sev-btn:not(.active):hover { background: rgba(255,255,255,0.07); }
+        .ai-section { background: rgba(124,58,237,0.06); border: 1px solid rgba(167,139,250,0.15); border-radius: 11px; padding: 16px; margin-bottom: 16px; }
+        .ai-section-label { font-size: 11px; font-weight: 600; color: #a78bfa; text-transform: uppercase; letter-spacing: 0.07em; margin: 0 0 14px; display: flex; align-items: center; gap: 7px; }
+        .nf-footer { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-cancel { flex: 1; padding: 11px; border-radius: 9px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); font-size: 13px; font-weight: 600; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; transition: all 0.12s; }
+        .btn-cancel:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .btn-submit { flex: 1; padding: 11px; border-radius: 9px; background: rgba(37,99,235,0.85); border: 1px solid rgba(59,130,246,0.4); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.12s; }
+        .btn-submit:hover { background: rgba(37,99,235,1); }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+      `}</style>
 
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Nuevo hallazgo</h1>
-        <button
-          type="button"
-          onClick={handleAIGenerate}
-          disabled={generating}
-          className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-60 transition-colors"
-        >
-          {generating ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Sparkles className="w-4 h-4" />
-          )}
-          {generating ? 'Generando con IA…' : 'Generar con IA'}
-        </button>
-      </div>
+      <div className="nf-wrap">
+        <Link href={`/projects/${params.id}`} className="nf-back">
+          <ArrowLeft size={14} /> Volver al proyecto
+        </Link>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Título */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
-          <input
-            required
-            value={form.title}
-            onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-            placeholder="Ej: SQL Injection en /api/users"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="nf-header">
+          <h1 className="nf-title">Nuevo hallazgo</h1>
+          <button type="button" onClick={handleAIGenerate} disabled={generating} className="btn-ai">
+            {generating ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
+            {generating ? 'Generando con IA…' : 'Generar con IA'}
+          </button>
         </div>
 
-        {/* Severidad + Categoría */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Severidad *</label>
-            <div className="flex flex-col gap-1.5">
+        <form onSubmit={handleSubmit}>
+          <div className="nf-field">
+            <label className="nf-label">Título *</label>
+            <input
+              required
+              value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="Ej: SQL Injection en /api/users"
+              className="nf-input"
+            />
+          </div>
+
+          <div className="nf-2col">
+            {/* Severidad */}
+            <div>
+              <label className="nf-label">Severidad *</label>
               {SEVERITY_ORDER.map(s => {
-                const cfg = SEVERITY_CONFIG[s]
+                const active = form.severity === s
+                const cfg = SEV_ACTIVE[s]
                 return (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setForm(f => ({ ...f, severity: s }))}
-                    className={`w-full py-1.5 rounded-lg text-xs font-medium border text-left px-3 transition-colors ${
-                      form.severity === s
-                        ? `${cfg.bg} ${cfg.color} ${cfg.border}`
-                        : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`sev-btn${active ? ' active' : ''}`}
+                    style={active ? { background: cfg.bg, color: cfg.color, borderColor: cfg.border } : {}}
                   >
-                    {cfg.label}
+                    {SEVERITY_CONFIG[s]?.label ?? s}
                   </button>
                 )
               })}
             </div>
-          </div>
-          <div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-              <select
-                value={form.category}
-                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {CATEGORIES.map(c => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">CVE ID</label>
-              <input
-                value={form.cve_id}
-                onChange={e => setForm(f => ({ ...f, cve_id: e.target.value }))}
-                placeholder="CVE-2024-XXXXX"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            {/* Categoría + CVE + CVSS */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">CVSS Score</label>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                max="10"
-                value={form.cvss_score}
-                onChange={e => setForm(f => ({ ...f, cvss_score: e.target.value }))}
-                placeholder="0.0 – 10.0"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="nf-field">
+                <label className="nf-label">Categoría</label>
+                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="nf-input">
+                  {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div className="nf-field">
+                <label className="nf-label">CVE ID</label>
+                <input value={form.cve_id} onChange={e => setForm(f => ({ ...f, cve_id: e.target.value }))} placeholder="CVE-2024-XXXXX" className="nf-input" />
+              </div>
+              <div className="nf-field">
+                <label className="nf-label">CVSS Score</label>
+                <input type="number" step="0.1" min="0" max="10" value={form.cvss_score} onChange={e => setForm(f => ({ ...f, cvss_score: e.target.value }))} placeholder="0.0 – 10.0" className="nf-input" />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* AI-generated fields */}
-        <div className="rounded-xl border border-purple-100 bg-purple-50/50 p-4 space-y-4">
-          <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" /> Contenido generado por IA (editable)
-          </p>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-            <textarea
-              rows={4}
-              value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              placeholder="Descripción técnica del hallazgo…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white"
-            />
+          {/* IA section */}
+          <div className="ai-section">
+            <p className="ai-section-label"><Sparkles size={12} />Contenido generado por IA (editable)</p>
+            <div className="nf-field">
+              <label className="nf-label">Descripción</label>
+              <textarea rows={4} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripción técnica del hallazgo…" className="nf-textarea" />
+            </div>
+            <div className="nf-field">
+              <label className="nf-label">Impacto</label>
+              <textarea rows={3} value={form.impact} onChange={e => setForm(f => ({ ...f, impact: e.target.value }))} placeholder="Impacto potencial para el negocio…" className="nf-textarea" />
+            </div>
+            <div className="nf-field" style={{ marginBottom: 0 }}>
+              <label className="nf-label">Recomendación</label>
+              <textarea rows={3} value={form.recommendation} onChange={e => setForm(f => ({ ...f, recommendation: e.target.value }))} placeholder="Pasos concretos para remediar…" className="nf-textarea" />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Impacto</label>
-            <textarea
-              rows={3}
-              value={form.impact}
-              onChange={e => setForm(f => ({ ...f, impact: e.target.value }))}
-              placeholder="Impacto potencial para el negocio…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white"
-            />
+
+          <div className="nf-field">
+            <label className="nf-label">Evidencia / POC</label>
+            <textarea rows={3} value={form.evidence} onChange={e => setForm(f => ({ ...f, evidence: e.target.value }))} placeholder="URLs, capturas, comandos usados…" className="nf-textarea mono" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Recomendación</label>
-            <textarea
-              rows={3}
-              value={form.recommendation}
-              onChange={e => setForm(f => ({ ...f, recommendation: e.target.value }))}
-              placeholder="Pasos concretos para remediar…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white"
-            />
+
+          <div className="nf-field">
+            <label className="nf-label">Componentes afectados <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(uno por línea)</span></label>
+            <textarea rows={2} value={form.affected_components} onChange={e => setForm(f => ({ ...f, affected_components: e.target.value }))} placeholder={"https://app.example.com/api/login\n192.168.1.10"} className="nf-textarea mono" />
           </div>
-        </div>
 
-        {/* Evidencia */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Evidencia / POC</label>
-          <textarea
-            rows={3}
-            value={form.evidence}
-            onChange={e => setForm(f => ({ ...f, evidence: e.target.value }))}
-            placeholder="URLs, capturas, comandos usados…"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-xs"
-          />
-        </div>
-
-        {/* Componentes afectados */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Componentes afectados <span className="text-gray-400 font-normal">(uno por línea)</span>
-          </label>
-          <textarea
-            rows={2}
-            value={form.affected_components}
-            onChange={e => setForm(f => ({ ...f, affected_components: e.target.value }))}
-            placeholder="https://app.example.com/api/login&#10;192.168.1.10"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-xs"
-          />
-        </div>
-
-        <div className="pt-2 flex gap-3">
-          <Link
-            href={`/projects/${params.id}`}
-            className="flex-1 py-2.5 text-center rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Cancelar
-          </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex-1 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
-          >
-            {saving ? 'Guardando…' : 'Guardar hallazgo'}
-          </button>
-        </div>
-      </form>
-    </div>
+          <div className="nf-footer">
+            <Link href={`/projects/${params.id}`} className="btn-cancel">Cancelar</Link>
+            <button type="submit" disabled={saving} className="btn-submit">
+              {saving ? 'Guardando…' : 'Guardar hallazgo'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
   )
 }

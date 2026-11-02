@@ -1,17 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import {
-  Shield, AlertTriangle, CheckCircle, TrendingDown,
-  ArrowRight, Clock, Flame, Activity, Lock, Globe,
-  ChevronRight, BarChart2, Zap, FolderOpen, Code2, FileText
+  Shield, AlertTriangle, CheckCircle,
+  ArrowRight, Flame, Activity, Lock,
+  ChevronRight, BarChart2, Zap, FolderOpen, Code2, FileText, Globe, TrendingDown
 } from 'lucide-react'
 
 const SEVERITY_DOT: Record<string, string> = {
-  critical: 'bg-red-500',
-  high:     'bg-orange-500',
-  medium:   'bg-yellow-500',
-  low:      'bg-blue-400',
-  info:     'bg-gray-500',
+  critical: '#ef4444',
+  high:     '#f97316',
+  medium:   '#eab308',
+  low:      '#60a5fa',
+  info:     '#6b7280',
 }
 
 const SEVERITY_LABEL: Record<string, string> = {
@@ -26,9 +26,9 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
   const grade = score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : score >= 40 ? 'D' : 'F'
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size/2} cy={size/2} r={r} stroke="rgba(255,255,255,0.06)" strokeWidth="6" fill="none" />
+    <div style={{ position: 'relative', width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size/2} cy={size/2} r={r} stroke="rgba(255,255,255,0.1)" strokeWidth="6" fill="none" />
         <circle
           cx={size/2} cy={size/2} r={r}
           stroke={color} strokeWidth="6" fill="none"
@@ -36,9 +36,9 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
           strokeLinecap="round"
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-white font-black leading-none" style={{ fontSize: size * 0.28 }}>{grade}</span>
-        <span className="text-white/40 leading-none" style={{ fontSize: size * 0.16 }}>{score}</span>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ color: '#fff', fontWeight: 900, fontSize: size * 0.28, lineHeight: 1 }}>{grade}</span>
+        <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: size * 0.16, lineHeight: 1 }}>{score}</span>
       </div>
     </div>
   )
@@ -54,19 +54,14 @@ export default async function DashboardPage() {
     .eq('id', user!.id)
     .single()
 
-  // Proyectos activos con sus findings
   const { data: projects } = await supabase
     .from('projects')
-    .select(`
-      id, name, type, status, start_date,
-      findings(severity, status)
-    `)
+    .select(`id, name, status, start_date, findings(severity, status)`)
     .eq('tenant_id', profile!.tenant_id)
     .neq('status', 'archived')
     .order('created_at', { ascending: false })
     .limit(6)
 
-  // Findings recientes sin resolver
   const { data: recentFindings } = await supabase
     .from('findings')
     .select('id, title, severity, status, created_at, projects(name)')
@@ -75,7 +70,6 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(8)
 
-  // Totales globales
   const { data: allFindings } = await supabase
     .from('findings')
     .select('severity, status')
@@ -86,293 +80,591 @@ export default async function DashboardPage() {
   const resolved = allFindings?.filter(f => f.status === 'resolved').length ?? 0
   const open = total - resolved
 
-  // Score global (simplificado)
   const penalty = (critical * 20 + high * 10) / Math.max(total, 1) * 10
   const globalScore = Math.max(0, Math.round(100 - Math.min(penalty, 100)))
 
-  // Hora del día para saludo
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Alejandro'
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-white">
-      <div className="max-w-7xl mx-auto px-8 py-8">
+    <>
+      <style>{`
+        .dash-wrap {
+          min-height: 100vh;
+          padding: 28px 32px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+          color: #fff;
+        }
+        .dash-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin-bottom: 28px;
+        }
+        .dash-greeting {
+          color: rgba(255,255,255,0.45);
+          font-size: 13px;
+          margin: 0 0 4px;
+        }
+        .dash-title {
+          color: #fff;
+          font-size: 22px;
+          font-weight: 700;
+          margin: 0;
+          letter-spacing: -0.3px;
+        }
+        .btn-primary {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 9px 18px;
+          background: rgba(37,99,235,0.85);
+          border: 1px solid rgba(59,130,246,0.4);
+          color: #fff;
+          font-size: 13px;
+          font-weight: 600;
+          border-radius: 10px;
+          text-decoration: none;
+          transition: all 0.15s;
+          backdrop-filter: blur(8px);
+        }
+        .btn-primary:hover {
+          background: rgba(37,99,235,1);
+          border-color: rgba(96,165,250,0.6);
+        }
+        /* Stats grid */
+        .stats-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+          gap: 14px;
+          margin-bottom: 20px;
+        }
+        .card {
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.09);
+          border-radius: 14px;
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+        }
+        .score-card {
+          padding: 20px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+        .score-info p { margin: 0; }
+        .score-label {
+          color: rgba(255,255,255,0.4);
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          margin-bottom: 4px !important;
+        }
+        .score-status {
+          color: #fff;
+          font-size: 15px;
+          font-weight: 700;
+        }
+        .score-sub {
+          color: rgba(255,255,255,0.3);
+          font-size: 11px;
+          margin-top: 3px !important;
+        }
+        .stat-card {
+          padding: 18px;
+        }
+        .stat-card.alert {
+          background: rgba(239,68,68,0.08);
+          border-color: rgba(239,68,68,0.2);
+        }
+        .stat-icon-wrap {
+          width: 30px;
+          height: 30px;
+          border-radius: 8px;
+          background: rgba(255,255,255,0.08);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 12px;
+        }
+        .stat-value {
+          font-size: 28px;
+          font-weight: 900;
+          color: #fff;
+          margin: 0 0 3px;
+          line-height: 1;
+        }
+        .stat-label {
+          font-size: 12px;
+          color: rgba(255,255,255,0.55);
+          font-weight: 500;
+          margin: 0;
+        }
+        .stat-sub {
+          font-size: 11px;
+          color: rgba(255,255,255,0.25);
+          margin: 2px 0 0;
+        }
+        /* Main grid */
+        .main-grid {
+          display: grid;
+          grid-template-columns: 1fr 380px;
+          gap: 16px;
+        }
+        .panel {
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 14px;
+          overflow: hidden;
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+        }
+        .panel-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 18px;
+          border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .panel-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.8);
+        }
+        .panel-link {
+          font-size: 12px;
+          color: #60a5fa;
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          gap: 3px;
+        }
+        .panel-link:hover { color: #93c5fd; }
+        .panel-empty {
+          padding: 48px 20px;
+          text-align: center;
+        }
+        .panel-empty-icon {
+          color: rgba(255,255,255,0.1);
+          margin: 0 auto 12px;
+          display: block;
+        }
+        .panel-empty-text {
+          color: rgba(255,255,255,0.3);
+          font-size: 13px;
+          margin: 0 0 8px;
+        }
+        .panel-empty-link {
+          color: #60a5fa;
+          font-size: 12px;
+          text-decoration: none;
+        }
+        /* Project rows */
+        .proj-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 13px 18px;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+          text-decoration: none;
+          transition: background 0.12s;
+        }
+        .proj-row:last-child { border-bottom: none; }
+        .proj-row:hover { background: rgba(255,255,255,0.03); }
+        .proj-grade {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          background: rgba(255,255,255,0.07);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          font-size: 17px;
+          font-weight: 900;
+        }
+        .proj-info { flex: 1; min-width: 0; }
+        .proj-name {
+          font-size: 13px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.88);
+          margin: 0 0 4px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .proj-tags {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .proj-dot-group {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .proj-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+        .proj-dot-count {
+          font-size: 11px;
+          color: rgba(255,255,255,0.3);
+        }
+        .proj-bar-wrap { width: 90px; flex-shrink: 0; }
+        .proj-bar-labels {
+          display: flex;
+          justify-content: space-between;
+          font-size: 10px;
+          color: rgba(255,255,255,0.3);
+          margin-bottom: 4px;
+        }
+        .proj-bar-track {
+          height: 4px;
+          background: rgba(255,255,255,0.08);
+          border-radius: 99px;
+          overflow: hidden;
+        }
+        .proj-bar-fill {
+          height: 100%;
+          border-radius: 99px;
+        }
+        .proj-arrow { color: rgba(255,255,255,0.18); flex-shrink: 0; }
+        .proj-row:hover .proj-arrow { color: rgba(255,255,255,0.4); }
+        /* Finding rows */
+        .finding-row {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          padding: 11px 16px;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+          text-decoration: none;
+          transition: background 0.12s;
+        }
+        .finding-row:last-child { border-bottom: none; }
+        .finding-row:hover { background: rgba(255,255,255,0.03); }
+        .finding-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          flex-shrink: 0;
+          margin-top: 5px;
+        }
+        .finding-info { flex: 1; min-width: 0; }
+        .finding-title {
+          font-size: 12px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.8);
+          margin: 0 0 3px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .finding-meta {
+          font-size: 11px;
+          color: rgba(255,255,255,0.3);
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        /* Quick actions */
+        .quick-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          padding: 14px;
+        }
+        .quick-btn {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 11px 12px;
+          border-radius: 10px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.07);
+          text-decoration: none;
+          transition: all 0.12s;
+        }
+        .quick-btn:hover {
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.12);
+        }
+        .quick-btn-label {
+          font-size: 12px;
+          color: rgba(255,255,255,0.6);
+          font-weight: 500;
+        }
+        .quick-btn:hover .quick-btn-label { color: rgba(255,255,255,0.9); }
+        /* Frameworks */
+        .fw-wrap { padding: 14px 16px; }
+        .fw-section-label {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 10px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: rgba(255,255,255,0.35);
+          margin-bottom: 14px;
+        }
+        .fw-item { margin-bottom: 10px; }
+        .fw-item:last-child { margin-bottom: 0; }
+        .fw-labels {
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+          color: rgba(255,255,255,0.4);
+          margin-bottom: 5px;
+        }
+        .fw-track {
+          height: 5px;
+          background: rgba(255,255,255,0.07);
+          border-radius: 99px;
+          overflow: hidden;
+        }
+        .fw-fill {
+          height: 100%;
+          border-radius: 99px;
+          background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+        }
+        .right-col { display: flex; flex-direction: column; gap: 14px; }
+      `}</style>
 
+      <div className="dash-wrap">
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="dash-header">
           <div>
-            <p className="text-white/40 text-sm mb-1">{greeting}, {firstName}</p>
-            <h1 className="text-2xl font-bold text-white">Postura de Seguridad</h1>
+            <p className="dash-greeting">{greeting}, {firstName}</p>
+            <h1 className="dash-title">Postura de Seguridad</h1>
           </div>
-          <Link
-            href="/projects/new"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            <Zap className="w-4 h-4" />
+          <Link href="/projects/new" className="btn-primary">
+            <Zap size={14} />
             Nuevo proyecto
           </Link>
         </div>
 
-        {/* Score global + stats */}
-        <div className="grid grid-cols-12 gap-4 mb-6">
-
-          {/* Score principal */}
-          <div className="col-span-3 bg-white/[0.04] border border-white/[0.08] rounded-2xl p-6 flex items-center gap-5">
-            <ScoreRing score={globalScore} size={88} />
-            <div>
-              <p className="text-white/40 text-xs uppercase tracking-wider mb-1">Score global</p>
-              <p className="text-white font-bold text-lg leading-tight">
+        {/* Stats */}
+        <div className="stats-grid">
+          {/* Score */}
+          <div className="card score-card">
+            <ScoreRing score={globalScore} size={84} />
+            <div className="score-info">
+              <p className="score-label">Score global</p>
+              <p className="score-status">
                 {globalScore >= 75 ? 'Buena postura' : globalScore >= 50 ? 'Postura media' : 'Postura crítica'}
               </p>
-              <p className="text-white/30 text-xs mt-1">{projects?.length ?? 0} proyectos activos</p>
+              <p className="score-sub">{projects?.length ?? 0} proyectos activos</p>
             </div>
           </div>
 
-          {/* Stats */}
-          {[
-            {
-              icon: <Flame className="w-4 h-4 text-red-400" />,
-              bg: 'bg-red-500/10 border-red-500/20',
-              label: 'Críticos abiertos',
-              value: critical,
-              sub: 'requieren acción inmediata',
-              alert: critical > 0,
-            },
-            {
-              icon: <AlertTriangle className="w-4 h-4 text-orange-400" />,
-              bg: 'bg-orange-500/10 border-orange-500/20',
-              label: 'Altos sin resolver',
-              value: high,
-              sub: 'alta prioridad',
-              alert: false,
-            },
-            {
-              icon: <Activity className="w-4 h-4 text-blue-400" />,
-              bg: 'bg-blue-500/10 border-blue-500/20',
-              label: 'Total hallazgos',
-              value: open,
-              sub: `${resolved} resueltos`,
-              alert: false,
-            },
-            {
-              icon: <CheckCircle className="w-4 h-4 text-green-400" />,
-              bg: 'bg-green-500/10 border-green-500/20',
-              label: 'Tasa de resolución',
-              value: total > 0 ? `${Math.round((resolved / total) * 100)}%` : '—',
-              sub: `${resolved} de ${total}`,
-              alert: false,
-            },
-          ].map((stat, i) => (
-            <div
-              key={i}
-              className={`col-span-2 rounded-2xl border p-5 ${stat.bg} ${stat.alert ? 'ring-1 ring-red-500/40' : 'border-white/[0.08] bg-white/[0.04]'}`}
-              style={stat.alert ? {} : { background: 'rgba(255,255,255,0.03)' }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 rounded-lg bg-white/10">{stat.icon}</div>
-              </div>
-              <p className="text-3xl font-black text-white mb-1">{stat.value}</p>
-              <p className="text-white/60 text-xs font-medium">{stat.label}</p>
-              <p className="text-white/25 text-xs mt-0.5">{stat.sub}</p>
+          {/* Críticos */}
+          <div className={`card stat-card${critical > 0 ? ' alert' : ''}`}>
+            <div className="stat-icon-wrap">
+              <Flame size={14} color="#f87171" />
             </div>
-          ))}
+            <p className="stat-value">{critical}</p>
+            <p className="stat-label">Críticos abiertos</p>
+            <p className="stat-sub">requieren acción inmediata</p>
+          </div>
+
+          {/* Altos */}
+          <div className="card stat-card">
+            <div className="stat-icon-wrap">
+              <AlertTriangle size={14} color="#fb923c" />
+            </div>
+            <p className="stat-value">{high}</p>
+            <p className="stat-label">Altos sin resolver</p>
+            <p className="stat-sub">alta prioridad</p>
+          </div>
+
+          {/* Total */}
+          <div className="card stat-card">
+            <div className="stat-icon-wrap">
+              <Activity size={14} color="#60a5fa" />
+            </div>
+            <p className="stat-value">{open}</p>
+            <p className="stat-label">Total hallazgos</p>
+            <p className="stat-sub">{resolved} resueltos</p>
+          </div>
+
+          {/* Resolución */}
+          <div className="card stat-card">
+            <div className="stat-icon-wrap">
+              <CheckCircle size={14} color="#4ade80" />
+            </div>
+            <p className="stat-value">{total > 0 ? `${Math.round((resolved / total) * 100)}%` : '—'}</p>
+            <p className="stat-label">Tasa de resolución</p>
+            <p className="stat-sub">{resolved} de {total}</p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-4">
-
-          {/* Proyectos — izquierda */}
-          <div className="col-span-7">
-            <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
-                <div className="flex items-center gap-2">
-                  <BarChart2 className="w-4 h-4 text-white/40" />
-                  <h2 className="text-sm font-semibold text-white/80">Proyectos activos</h2>
-                </div>
-                <Link href="/projects" className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
-                  Ver todos <ChevronRight className="w-3 h-3" />
-                </Link>
+        {/* Main */}
+        <div className="main-grid">
+          {/* Proyectos */}
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">
+                <BarChart2 size={14} color="rgba(255,255,255,0.4)" />
+                Proyectos activos
               </div>
-
-              <div className="divide-y divide-white/[0.05]">
-                {!projects?.length ? (
-                  <div className="px-5 py-12 text-center">
-                    <Shield className="w-8 h-8 text-white/10 mx-auto mb-3" />
-                    <p className="text-white/30 text-sm">No hay proyectos activos</p>
-                    <Link href="/projects/new" className="text-xs text-blue-400 hover:text-blue-300 mt-2 inline-block">
-                      Crear primer proyecto →
-                    </Link>
-                  </div>
-                ) : projects.map(project => {
-                  const findings = (project.findings ?? []) as { severity: string; status: string }[]
-                  const pCritical = findings.filter(f => f.severity === 'critical' && f.status !== 'resolved').length
-                  const pHigh = findings.filter(f => f.severity === 'high' && f.status !== 'resolved').length
-                  const pTotal = findings.length
-                  const pResolved = findings.filter(f => f.status === 'resolved').length
-                  const pPenalty = (pCritical * 20 + pHigh * 10) / Math.max(pTotal, 1) * 5
-                  const pScore = Math.max(0, Math.round(100 - Math.min(pPenalty, 100)))
-                  const pGrade = pScore >= 90 ? 'A' : pScore >= 75 ? 'B' : pScore >= 60 ? 'C' : pScore >= 40 ? 'D' : 'F'
-                  const gradeColor = pScore >= 75 ? 'text-green-400' : pScore >= 50 ? 'text-yellow-400' : 'text-red-400'
-                  const typeLabel = project.type === 'web' ? 'Web' : project.type === 'infrastructure' ? 'Infra' : 'Web + Infra'
-
-                  return (
-                    <Link key={project.id} href={`/projects/${project.id}`}>
-                      <div className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.03] transition-colors group">
-                        {/* Grade */}
-                        <div className="w-9 h-9 rounded-xl bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-                          <span className={`text-lg font-black ${gradeColor}`}>{pGrade}</span>
-                        </div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-white/90 truncate">{project.name}</p>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.07] text-white/40 flex-shrink-0">
-                              {typeLabel}
-                            </span>
-                            {pCritical > 0 && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 flex-shrink-0">
-                                {pCritical} crítico{pCritical > 1 ? 's' : ''}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 mt-1">
-                            {/* Mini severity dots */}
-                            {['critical','high','medium','low'].map(s => {
-                              const c = findings.filter(f => f.severity === s && f.status !== 'resolved').length
-                              return c > 0 ? (
-                                <span key={s} className="flex items-center gap-1">
-                                  <span className={`w-1.5 h-1.5 rounded-full ${SEVERITY_DOT[s]}`} />
-                                  <span className="text-[11px] text-white/30">{c}</span>
-                                </span>
-                              ) : null
-                            })}
-                            {pTotal === 0 && <span className="text-[11px] text-white/20">Sin hallazgos</span>}
-                          </div>
-                        </div>
-
-                        {/* Progress bar */}
-                        <div className="w-24 flex-shrink-0">
-                          <div className="flex justify-between text-[10px] text-white/30 mb-1">
-                            <span>Resolución</span>
-                            <span>{pTotal > 0 ? Math.round((pResolved/pTotal)*100) : 0}%</span>
-                          </div>
-                          <div className="h-1 bg-white/[0.08] rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${pScore >= 75 ? 'bg-green-500' : pScore >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                              style={{ width: `${pTotal > 0 ? (pResolved/pTotal)*100 : 0}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-white/40 flex-shrink-0" />
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
+              <Link href="/projects" className="panel-link">
+                Ver todos <ChevronRight size={12} />
+              </Link>
             </div>
+
+            {!projects?.length ? (
+              <div className="panel-empty">
+                <Shield size={32} className="panel-empty-icon" />
+                <p className="panel-empty-text">No hay proyectos activos</p>
+                <Link href="/projects/new" className="panel-empty-link">Crear primer proyecto →</Link>
+              </div>
+            ) : projects.map(project => {
+              const findings = (project.findings ?? []) as { severity: string; status: string }[]
+              const pCritical = findings.filter(f => f.severity === 'critical' && f.status !== 'resolved').length
+              const pHigh = findings.filter(f => f.severity === 'high' && f.status !== 'resolved').length
+              const pTotal = findings.length
+              const pResolved = findings.filter(f => f.status === 'resolved').length
+              const pPenalty = (pCritical * 20 + pHigh * 10) / Math.max(pTotal, 1) * 5
+              const pScore = Math.max(0, Math.round(100 - Math.min(pPenalty, 100)))
+              const pGrade = pScore >= 90 ? 'A' : pScore >= 75 ? 'B' : pScore >= 60 ? 'C' : pScore >= 40 ? 'D' : 'F'
+              const gradeColor = pScore >= 75 ? '#4ade80' : pScore >= 50 ? '#facc15' : '#f87171'
+              const pct = pTotal > 0 ? Math.round((pResolved / pTotal) * 100) : 0
+              const barColor = pScore >= 75 ? '#22c55e' : pScore >= 50 ? '#eab308' : '#ef4444'
+
+              return (
+                <Link key={project.id} href={`/projects/${project.id}`} className="proj-row">
+                  <div className="proj-grade" style={{ color: gradeColor }}>{pGrade}</div>
+                  <div className="proj-info">
+                    <p className="proj-name">{project.name}</p>
+                    <div className="proj-tags">
+                      {['critical','high','medium','low'].map(s => {
+                        const c = findings.filter(f => f.severity === s && f.status !== 'resolved').length
+                        return c > 0 ? (
+                          <span key={s} className="proj-dot-group">
+                            <span className="proj-dot" style={{ background: SEVERITY_DOT[s] }} />
+                            <span className="proj-dot-count">{c}</span>
+                          </span>
+                        ) : null
+                      })}
+                      {pTotal === 0 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>Sin hallazgos</span>}
+                    </div>
+                  </div>
+                  <div className="proj-bar-wrap">
+                    <div className="proj-bar-labels">
+                      <span>Resolución</span>
+                      <span>{pct}%</span>
+                    </div>
+                    <div className="proj-bar-track">
+                      <div className="proj-bar-fill" style={{ width: `${pct}%`, background: barColor }} />
+                    </div>
+                  </div>
+                  <ChevronRight size={14} className="proj-arrow" />
+                </Link>
+              )
+            })}
           </div>
 
-          {/* Feed de críticos — derecha */}
-          <div className="col-span-5 space-y-4">
-
-            {/* Hallazgos críticos/altos */}
-            <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
-                <div className="flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-red-400" />
-                  <h2 className="text-sm font-semibold text-white/80">Requieren atención</h2>
+          {/* Columna derecha */}
+          <div className="right-col">
+            {/* Requieren atención */}
+            <div className="panel">
+              <div className="panel-header">
+                <div className="panel-title">
+                  <Flame size={14} color="#f87171" />
+                  Requieren atención
                 </div>
                 {critical + high > 8 && (
-                  <span className="text-xs text-white/30">+{critical + high - 8} más</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>+{critical + high - 8} más</span>
                 )}
               </div>
-
-              <div className="divide-y divide-white/[0.05] max-h-72 overflow-y-auto">
+              <div style={{ maxHeight: 240, overflowY: 'auto' }}>
                 {!recentFindings?.length ? (
-                  <div className="px-5 py-10 text-center">
-                    <CheckCircle className="w-7 h-7 text-green-500/40 mx-auto mb-2" />
-                    <p className="text-white/30 text-xs">Sin hallazgos críticos pendientes</p>
+                  <div className="panel-empty">
+                    <CheckCircle size={28} color="rgba(74,222,128,0.3)" className="panel-empty-icon" />
+                    <p className="panel-empty-text" style={{ fontSize: 12 }}>Sin hallazgos críticos pendientes</p>
                   </div>
                 ) : recentFindings.map(f => {
                   const projRaw = f.projects
                   const proj = (Array.isArray(projRaw) ? projRaw[0] : projRaw) as { name: string } | null
                   const projectId = (f as Record<string, unknown>).project_id as string ?? ''
+                  const sevColor = f.severity === 'critical' ? '#f87171' : '#fb923c'
                   return (
-                    <Link key={f.id} href={`/projects/${projectId}/findings/${f.id}`}>
-                      <div className="flex items-start gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors group">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${SEVERITY_DOT[f.severity]}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-white/80 truncate">{f.title}</p>
-                          <p className="text-[11px] text-white/30 mt-0.5 flex items-center gap-1.5">
-                            {f.severity === 'critical'
-                              ? <span className="text-red-400">{SEVERITY_LABEL[f.severity]}</span>
-                              : <span className="text-orange-400">{SEVERITY_LABEL[f.severity]}</span>
-                            }
-                            <span>·</span>
-                            <span className="truncate">{proj?.name ?? '—'}</span>
-                          </p>
-                        </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-white/15 group-hover:text-white/30 flex-shrink-0 mt-1" />
+                    <Link key={f.id} href={`/projects/${projectId}/findings/${f.id}`} className="finding-row">
+                      <span className="finding-dot" style={{ background: SEVERITY_DOT[f.severity] }} />
+                      <div className="finding-info">
+                        <p className="finding-title">{f.title}</p>
+                        <p className="finding-meta">
+                          <span style={{ color: sevColor }}>{SEVERITY_LABEL[f.severity]}</span>
+                          <span>·</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proj?.name ?? '—'}</span>
+                        </p>
                       </div>
+                      <ChevronRight size={12} style={{ color: 'rgba(255,255,255,0.18)', flexShrink: 0, marginTop: 2 }} />
                     </Link>
                   )
                 })}
               </div>
             </div>
 
-            {/* Quick actions */}
-            <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
-              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Acciones rápidas</p>
-              <div className="grid grid-cols-2 gap-2">
+            {/* Acciones rápidas */}
+            <div className="panel">
+              <div className="panel-header">
+                <div className="panel-title" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>
+                  Acciones rápidas
+                </div>
+              </div>
+              <div className="quick-grid">
                 {[
-                  { href: '/projects/new',  icon: FolderOpen,     label: 'Nuevo proyecto',  color: 'text-blue-400' },
-                  { href: '/code-analysis', icon: Code2,          label: 'Analizar código', color: 'text-purple-400' },
-                  { href: '/reports',       icon: TrendingDown,   label: 'Ver reportes',    color: 'text-green-400' },
-                  { href: '/organizations', icon: Globe,          label: 'Clientes',        color: 'text-orange-400' },
+                  { href: '/projects/new',  icon: FolderOpen,   label: 'Nuevo proyecto',  color: '#60a5fa' },
+                  { href: '/code-analysis', icon: Code2,        label: 'Analizar código', color: '#c084fc' },
+                  { href: '/reports',       icon: TrendingDown, label: 'Ver reportes',    color: '#4ade80' },
+                  { href: '/organizations', icon: Globe,        label: 'Clientes',        color: '#fb923c' },
                 ].map(({ href, icon: Icon, label, color }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-all group"
-                  >
-                    <Icon className={`w-4 h-4 ${color} flex-shrink-0`} />
-                    <span className="text-xs text-white/60 group-hover:text-white/90 font-medium">{label}</span>
+                  <Link key={href} href={href} className="quick-btn">
+                    <Icon size={14} color={color} style={{ flexShrink: 0 }} />
+                    <span className="quick-btn-label">{label}</span>
                   </Link>
                 ))}
               </div>
             </div>
 
-            {/* Frameworks coverage */}
-            <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Lock className="w-4 h-4 text-white/30" />
-                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Cobertura de frameworks</p>
-              </div>
-              {[
-                { name: 'OWASP Top 10',  pct: 82 },
-                { name: 'ISO 27001',     pct: 67 },
-                { name: 'PCI-DSS v4.0', pct: 54 },
-                { name: 'NIST CSF 2.0', pct: 71 },
-              ].map(fw => (
-                <div key={fw.name} className="mb-2.5">
-                  <div className="flex justify-between text-[11px] text-white/40 mb-1">
-                    <span>{fw.name}</span>
-                    <span>{fw.pct}%</span>
-                  </div>
-                  <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
-                      style={{ width: `${fw.pct}%` }}
-                    />
-                  </div>
+            {/* Frameworks */}
+            <div className="panel">
+              <div className="fw-wrap">
+                <div className="fw-section-label">
+                  <Lock size={12} />
+                  Cobertura de frameworks
                 </div>
-              ))}
+                {[
+                  { name: 'OWASP Top 10',  pct: 82 },
+                  { name: 'ISO 27001',     pct: 67 },
+                  { name: 'PCI-DSS v4.0', pct: 54 },
+                  { name: 'NIST CSF 2.0', pct: 71 },
+                ].map(fw => (
+                  <div key={fw.name} className="fw-item">
+                    <div className="fw-labels">
+                      <span>{fw.name}</span>
+                      <span>{fw.pct}%</span>
+                    </div>
+                    <div className="fw-track">
+                      <div className="fw-fill" style={{ width: `${fw.pct}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

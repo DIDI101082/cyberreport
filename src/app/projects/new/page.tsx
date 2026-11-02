@@ -57,131 +57,144 @@ export default function NewProjectPage() {
   }
 
   return (
-    <div className="p-8 max-w-2xl">
-      <Link href="/projects" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6">
-        <ArrowLeft className="w-4 h-4" /> Volver a proyectos
-      </Link>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Nuevo proyecto</h1>
+    <>
+      <style>{`
+        .np-wrap { padding: 24px 28px; max-width: 600px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: #fff; }
+        .np-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(255,255,255,0.4); text-decoration: none; margin-bottom: 20px; transition: color 0.12s; }
+        .np-back:hover { color: rgba(255,255,255,0.8); }
+        .np-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0 0 22px; }
+        .np-field { margin-bottom: 16px; }
+        .np-label { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px; }
+        .np-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; padding: 9px 12px; font-size: 13px; color: #fff; font-family: inherit; outline: none; box-sizing: border-box; transition: border-color 0.12s; }
+        .np-input:focus { border-color: rgba(59,130,246,0.5); background: rgba(255,255,255,0.08); }
+        .np-input option { background: #131f35; }
+        .np-textarea { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; padding: 9px 12px; font-size: 13px; color: #fff; font-family: inherit; outline: none; box-sizing: border-box; resize: none; transition: border-color 0.12s; }
+        .np-textarea:focus { border-color: rgba(59,130,246,0.5); }
+        .np-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .type-btns { display: flex; gap: 8px; }
+        .type-btn { flex: 1; padding: 9px 8px; border-radius: 9px; font-size: 12px; font-weight: 600; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.5); cursor: pointer; font-family: inherit; transition: all 0.12s; }
+        .type-btn.active { background: rgba(37,99,235,0.3); border-color: rgba(59,130,246,0.5); color: #93c5fd; }
+        .type-btn:not(.active):hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.8); }
+        .fw-btn { flex: 1; padding: 8px; border-radius: 9px; font-size: 11px; font-weight: 600; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.45); cursor: pointer; font-family: inherit; transition: all 0.12s; }
+        .fw-btn.active { background: rgba(124,58,237,0.25); border-color: rgba(167,139,250,0.4); color: #c084fc; }
+        .fw-btn:not(.active):hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.75); }
+        .np-footer { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-cancel { flex: 1; padding: 11px; border-radius: 9px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); font-size: 13px; font-weight: 600; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; font-family: inherit; cursor: pointer; transition: all 0.12s; }
+        .btn-cancel:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .btn-submit { flex: 1; padding: 11px; border-radius: 9px; background: rgba(37,99,235,0.85); border: 1px solid rgba(59,130,246,0.4); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.12s; }
+        .btn-submit:hover { background: rgba(37,99,235,1); }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+      `}</style>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del proyecto *</label>
-          <input
-            required
-            value={form.name}
-            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            placeholder="Ej: Pentest Web — Empresa ABC Q1 2025"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+      <div className="np-wrap">
+        <Link href="/projects" className="np-back">
+          <ArrowLeft size={14} /> Volver a proyectos
+        </Link>
+        <h1 className="np-title">Nuevo proyecto</h1>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
-          <select
-            required
-            value={form.organization_id}
-            onChange={e => setForm(f => ({ ...f, organization_id: e.target.value }))}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Seleccionar cliente…</option>
-            {orgs.map(o => (
-              <option key={o.id} value={o.id}>{o.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de auditoría *</label>
-          <div className="flex gap-3">
-            {[
-              { value: 'web', label: 'Web (OWASP)' },
-              { value: 'infrastructure', label: 'Infraestructura' },
-              { value: 'both', label: 'Ambas' },
-            ].map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setForm(f => ({ ...f, type: opt.value as typeof f.type }))}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                  form.type === opt.value
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Alcance / Descripción</label>
-          <textarea
-            value={form.scope}
-            onChange={e => setForm(f => ({ ...f, scope: e.target.value }))}
-            rows={3}
-            placeholder="Dominio, IPs, aplicaciones en alcance…"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha inicio</label>
+        <form onSubmit={handleSubmit}>
+          <div className="np-field">
+            <label className="np-label">Nombre del proyecto *</label>
             <input
-              type="date"
-              value={form.start_date}
-              onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="Ej: Pentest Web — Empresa ABC Q1 2025"
+              className="np-input"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha fin</label>
-            <input
-              type="date"
-              value={form.end_date}
-              onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+          <div className="np-field">
+            <label className="np-label">Cliente *</label>
+            <select
+              required
+              value={form.organization_id}
+              onChange={e => setForm(f => ({ ...f, organization_id: e.target.value }))}
+              className="np-input"
+            >
+              <option value="">Seleccionar cliente…</option>
+              {orgs.map(o => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="np-field">
+            <label className="np-label">Tipo de auditoría *</label>
+            <div className="type-btns">
+              {[
+                { value: 'web', label: 'Web (OWASP)' },
+                { value: 'infrastructure', label: 'Infraestructura' },
+                { value: 'both', label: 'Ambas' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, type: opt.value as typeof f.type }))}
+                  className={`type-btn${form.type === opt.value ? ' active' : ''}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="np-field">
+            <label className="np-label">Alcance / Descripción</label>
+            <textarea
+              value={form.scope}
+              onChange={e => setForm(f => ({ ...f, scope: e.target.value }))}
+              rows={3}
+              placeholder="Dominio, IPs, aplicaciones en alcance…"
+              className="np-textarea"
             />
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Marcos normativos</label>
-          <div className="flex gap-3">
-            {FRAMEWORKS.map(fw => (
-              <button
-                key={fw}
-                type="button"
-                onClick={() => toggleFramework(fw)}
-                className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${
-                  form.target_frameworks.includes(fw)
-                    ? 'bg-purple-600 text-white border-purple-600'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-purple-400'
-                }`}
-              >
-                {fw}
-              </button>
-            ))}
+          <div className="np-row">
+            <div className="np-field">
+              <label className="np-label">Fecha inicio</label>
+              <input
+                type="date"
+                value={form.start_date}
+                onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
+                className="np-input"
+              />
+            </div>
+            <div className="np-field">
+              <label className="np-label">Fecha fin</label>
+              <input
+                type="date"
+                value={form.end_date}
+                onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
+                className="np-input"
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="pt-2 flex gap-3">
-          <Link
-            href="/projects"
-            className="flex-1 py-2.5 text-center rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Cancelar
-          </Link>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
-          >
-            {loading ? 'Creando…' : 'Crear proyecto'}
-          </button>
-        </div>
-      </form>
-    </div>
+          <div className="np-field">
+            <label className="np-label">Marcos normativos</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {FRAMEWORKS.map(fw => (
+                <button
+                  key={fw}
+                  type="button"
+                  onClick={() => toggleFramework(fw)}
+                  className={`fw-btn${form.target_frameworks.includes(fw) ? ' active' : ''}`}
+                >
+                  {fw}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="np-footer">
+            <Link href="/projects" className="btn-cancel">Cancelar</Link>
+            <button type="submit" disabled={loading} className="btn-submit">
+              {loading ? 'Creando…' : 'Crear proyecto'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
   )
 }

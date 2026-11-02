@@ -5,29 +5,29 @@ import type { PlanTier } from '@/types/billing'
 import { Check, Zap, Building2, Shield, CreditCard, AlertCircle } from 'lucide-react'
 
 const TIER_ICONS: Record<PlanTier, React.ReactNode> = {
-  starter:      <Shield className="w-5 h-5" />,
-  professional: <Zap className="w-5 h-5" />,
-  agency:       <Building2 className="w-5 h-5" />,
+  starter:      <Shield size={18} />,
+  professional: <Zap size={18} />,
+  agency:       <Building2 size={18} />,
 }
 
-const TIER_COLORS: Record<PlanTier, { ring: string; badge: string; btn: string; icon: string }> = {
+const TIER_COLORS: Record<PlanTier, { border: string; iconBg: string; iconColor: string; btnBg: string; badgeBg: string; badgeColor: string }> = {
   starter: {
-    ring:  'ring-gray-200',
-    badge: 'bg-gray-100 text-gray-700',
-    btn:   'bg-gray-800 hover:bg-gray-900 text-white',
-    icon:  'bg-gray-100 text-gray-700',
+    border: 'rgba(255,255,255,0.1)',
+    iconBg: 'rgba(255,255,255,0.08)', iconColor: 'rgba(255,255,255,0.5)',
+    btnBg: 'rgba(255,255,255,0.1)',
+    badgeBg: 'rgba(255,255,255,0.1)', badgeColor: 'rgba(255,255,255,0.5)',
   },
   professional: {
-    ring:  'ring-blue-500 ring-2',
-    badge: 'bg-blue-600 text-white',
-    btn:   'bg-blue-600 hover:bg-blue-700 text-white',
-    icon:  'bg-blue-100 text-blue-700',
+    border: 'rgba(59,130,246,0.5)',
+    iconBg: 'rgba(37,99,235,0.3)', iconColor: '#60a5fa',
+    btnBg: 'rgba(37,99,235,0.85)',
+    badgeBg: 'rgba(37,99,235,0.9)', badgeColor: '#fff',
   },
   agency: {
-    ring:  'ring-purple-200',
-    badge: 'bg-purple-100 text-purple-700',
-    btn:   'bg-purple-700 hover:bg-purple-800 text-white',
-    icon:  'bg-purple-100 text-purple-700',
+    border: 'rgba(167,139,250,0.4)',
+    iconBg: 'rgba(124,58,237,0.25)', iconColor: '#c084fc',
+    btnBg: 'rgba(124,58,237,0.7)',
+    badgeBg: 'rgba(124,58,237,0.3)', badgeColor: '#e9d5ff',
   },
 }
 
@@ -35,7 +35,6 @@ export default async function BillingPage() {
   const activePlan = await getActivePlan()
   const supabase = await createClient()
 
-  // Historial de facturas
   const { data: invoices } = await supabase
     .from('billing_invoices')
     .select('*')
@@ -49,203 +48,233 @@ export default async function BillingPage() {
     : null
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Planes y facturación</h1>
-        <p className="text-gray-500 mt-1">Elegí el plan que mejor se adapta a tu equipo</p>
-      </div>
+    <>
+      <style>{`
+        .pg-wrap { padding: 28px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: #fff; max-width: 1000px; }
+        .pg-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0 0 4px; }
+        .pg-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin: 0 0 24px; }
+        .banner { border-radius: 12px; padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+        .banner-trial { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); }
+        .banner-active { background: rgba(37,99,235,0.1); border: 1px solid rgba(59,130,246,0.2); display: flex; align-items: center; justify-content: space-between; }
+        .plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .plan-card { background: rgba(255,255,255,0.04); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; position: relative; transition: transform 0.15s; }
+        .plan-card:hover { transform: translateY(-2px); }
+        .plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 99px; white-space: nowrap; }
+        .plan-icon { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+        .plan-name { font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 4px; }
+        .plan-desc { font-size: 12px; color: rgba(255,255,255,0.4); margin: 0 0 14px; }
+        .plan-price { margin-bottom: 16px; }
+        .plan-price-num { font-size: 36px; font-weight: 900; color: #fff; }
+        .plan-price-unit { font-size: 13px; color: rgba(255,255,255,0.3); }
+        .plan-limits { display: grid; grid-template-columns: repeat(3, 1fr); background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px; gap: 0; margin-bottom: 16px; }
+        .plan-limit-item { text-align: center; }
+        .plan-limit-item + .plan-limit-item { border-left: 1px solid rgba(255,255,255,0.07); }
+        .plan-limit-val { font-size: 13px; font-weight: 700; color: #fff; }
+        .plan-limit-label { font-size: 10px; color: rgba(255,255,255,0.3); }
+        .plan-features { flex: 1; margin-bottom: 16px; }
+        .plan-feature { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 12px; color: rgba(255,255,255,0.65); }
+        .plan-btn { width: 100%; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; font-family: inherit; color: #fff; transition: opacity 0.15s; }
+        .plan-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .plan-btn:not(:disabled):hover { opacity: 0.85; }
+        .compare-panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
+        .compare-header { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.8); }
+        .compare-table { width: 100%; border-collapse: collapse; }
+        .compare-table th { padding: 10px 16px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.4); text-align: center; }
+        .compare-table th:first-child { text-align: left; }
+        .compare-table td { padding: 10px 16px; font-size: 12px; color: rgba(255,255,255,0.6); border-top: 1px solid rgba(255,255,255,0.05); text-align: center; }
+        .compare-table td:first-child { text-align: left; color: rgba(255,255,255,0.75); }
+        .compare-table .col-pro { background: rgba(37,99,235,0.05); color: #93c5fd; font-weight: 600; }
+        .invoices-panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; overflow: hidden; }
+        .inv-table { width: 100%; border-collapse: collapse; }
+        .inv-table th { padding: 10px 18px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.05em; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .inv-table td { padding: 12px 18px; font-size: 13px; color: rgba(255,255,255,0.6); border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .inv-table tr:last-child td { border-bottom: none; }
+        .inv-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 99px; }
+        .inv-paid { background: rgba(74,222,128,0.12); color: #4ade80; }
+        .inv-pending { background: rgba(250,204,21,0.12); color: #facc15; }
+        .inv-failed { background: rgba(239,68,68,0.12); color: #f87171; }
+      `}</style>
 
-      {/* Banner de trial */}
-      {isTrialing && trialEnd && (
-        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-          <p className="text-sm text-amber-800">
-            Estás en período de prueba gratuito hasta el <strong>{trialEnd}</strong>. Elegí un plan antes de que termine para no perder el acceso.
-          </p>
-        </div>
-      )}
+      <div className="pg-wrap">
+        <h1 className="pg-title">Planes y facturación</h1>
+        <p className="pg-sub">Elegí el plan que mejor se adapta a tu equipo de pentesting</p>
 
-      {/* Plan activo actual */}
-      {activePlan && !isTrialing && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <CreditCard className="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-blue-900">Plan {activePlan.plan_name} activo</p>
-              <p className="text-xs text-blue-700">
-                Próxima renovación: {new Date(activePlan.current_period_end).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            </div>
+        {/* Banner trial */}
+        {isTrialing && trialEnd && (
+          <div className="banner banner-trial">
+            <AlertCircle size={16} color="#fbbf24" style={{ flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: 13, color: '#fde68a', margin: 0 }}>
+              Estás en período de prueba gratuito hasta el <strong>{trialEnd}</strong>. Elegí un plan antes de que termine para no perder el acceso.
+            </p>
           </div>
-          <span className="text-sm font-semibold text-blue-800">${activePlan.price_usd}/mes</span>
-        </div>
-      )}
+        )}
 
-      {/* Grid de planes */}
-      <div className="grid grid-cols-3 gap-6 mb-10">
-        {(Object.entries(PLAN_CONFIG) as [PlanTier, typeof PLAN_CONFIG[PlanTier]][]).map(([tier, cfg]) => {
-          const colors = TIER_COLORS[tier]
-          const isCurrent = currentTier === tier
-
-          return (
-            <div
-              key={tier}
-              className={`bg-white rounded-2xl ring-1 ${colors.ring} p-6 relative flex flex-col`}
-            >
-              {/* Badge popular / activo */}
-              {cfg.badge && (
-                <span className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold ${colors.badge}`}>
-                  {cfg.badge}
-                </span>
-              )}
-              {isCurrent && !cfg.badge && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                  Plan actual
-                </span>
-              )}
-
-              {/* Ícono y nombre */}
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${colors.icon}`}>
-                {TIER_ICONS[tier]}
+        {/* Banner plan activo */}
+        {activePlan && !isTrialing && (
+          <div className="banner banner-active">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(37,99,235,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CreditCard size={16} color="#60a5fa" />
               </div>
-
-              <h2 className="text-lg font-bold text-gray-900">{cfg.label}</h2>
-              <p className="text-sm text-gray-500 mt-1 mb-4">{cfg.description}</p>
-
-              {/* Precio */}
-              <div className="mb-6">
-                <span className="text-4xl font-black text-gray-900">${cfg.price}</span>
-                <span className="text-gray-400 text-sm">/mes</span>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#93c5fd', margin: '0 0 2px' }}>Plan {activePlan.plan_name} activo</p>
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                  Próxima renovación: {new Date(activePlan.current_period_end).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
               </div>
-
-              {/* Límites rápidos */}
-              <div className="grid grid-cols-3 gap-2 mb-6 bg-gray-50 rounded-xl p-3">
-                <div className="text-center">
-                  <p className="text-xs font-bold text-gray-900">{cfg.limits.projects}</p>
-                  <p className="text-xs text-gray-400">proyectos</p>
-                </div>
-                <div className="text-center border-x border-gray-200">
-                  <p className="text-xs font-bold text-gray-900">{cfg.limits.users}</p>
-                  <p className="text-xs text-gray-400">usuarios</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs font-bold text-gray-900">{cfg.limits.clients}</p>
-                  <p className="text-xs text-gray-400">clientes</p>
-                </div>
-              </div>
-
-              {/* Features */}
-              <ul className="space-y-2.5 flex-1 mb-6">
-                {cfg.features.map((f, i) => (
-                  <li key={i} className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700">{f}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* CTA */}
-              {isCurrent ? (
-                <button disabled className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-400 cursor-not-allowed">
-                  Plan actual
-                </button>
-              ) : (
-                <button className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${colors.btn}`}>
-                  {currentTier && ['starter','professional','agency'].indexOf(tier) > ['starter','professional','agency'].indexOf(currentTier)
-                    ? 'Actualizar a ' + cfg.label
-                    : 'Cambiar a ' + cfg.label}
-                </button>
-              )}
             </div>
-          )
-        })}
-      </div>
-
-      {/* Comparación detallada */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-8">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Comparación de funcionalidades</h2>
-        </div>
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left px-6 py-3 text-sm font-medium text-gray-500 w-1/2">Funcionalidad</th>
-              <th className="text-center px-4 py-3 text-sm font-medium text-gray-700">Starter</th>
-              <th className="text-center px-4 py-3 text-sm font-medium text-blue-700 bg-blue-50">Professional</th>
-              <th className="text-center px-4 py-3 text-sm font-medium text-purple-700">Agency</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {[
-              { label: 'Proyectos',             starter: '3', pro: 'Ilimitados', agency: 'Ilimitados' },
-              { label: 'Usuarios',              starter: '2', pro: '5', agency: 'Ilimitados' },
-              { label: 'Exportación PDF / PPTX',starter: '✓', pro: '✓', agency: '✓' },
-              { label: 'Framework OWASP',       starter: '✓', pro: '✓', agency: '✓' },
-              { label: 'ISO 27001 / PCI-DSS / NIST / CIS', starter: '—', pro: '✓', agency: '✓' },
-              { label: 'Portal de remediación para clientes', starter: '—', pro: '✓', agency: '✓' },
-              { label: 'Importación Nessus / ZAP / Burp', starter: '—', pro: '✓', agency: '✓' },
-              { label: 'Análisis de código con IA', starter: 'Básico', pro: 'Avanzado', agency: 'Avanzado' },
-              { label: 'Marca blanca en reportes', starter: '—', pro: '—', agency: '✓' },
-              { label: 'Múltiples workspaces', starter: '—', pro: '—', agency: '✓' },
-              { label: 'API REST',              starter: '—', pro: '—', agency: '✓' },
-              { label: 'Soporte prioritario',   starter: 'Email', pro: 'Prioritario', agency: '24/7' },
-            ].map(row => (
-              <tr key={row.label} className="hover:bg-gray-50">
-                <td className="px-6 py-3 text-sm text-gray-700">{row.label}</td>
-                <td className="px-4 py-3 text-center text-sm text-gray-500">{row.starter}</td>
-                <td className="px-4 py-3 text-center text-sm text-blue-700 bg-blue-50/50 font-medium">{row.pro}</td>
-                <td className="px-4 py-3 text-center text-sm text-purple-700">{row.agency}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Historial de facturas */}
-      {invoices && invoices.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Historial de facturación</h2>
+            <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>${activePlan.price_usd}/mes</span>
           </div>
-          <table className="w-full">
+        )}
+
+        {/* Grid planes */}
+        <div className="plans-grid">
+          {(Object.entries(PLAN_CONFIG) as [PlanTier, typeof PLAN_CONFIG[PlanTier]][]).map(([tier, cfg]) => {
+            const colors = TIER_COLORS[tier]
+            const isCurrent = currentTier === tier
+
+            return (
+              <div
+                key={tier}
+                className="plan-card"
+                style={{ border: `1px solid ${colors.border}` }}
+              >
+                {cfg.badge && (
+                  <span
+                    className="plan-badge"
+                    style={{ background: colors.badgeBg, color: colors.badgeColor }}
+                  >
+                    {cfg.badge}
+                  </span>
+                )}
+                {isCurrent && !cfg.badge && (
+                  <span className="plan-badge" style={{ background: 'rgba(74,222,128,0.2)', color: '#4ade80' }}>
+                    Plan actual
+                  </span>
+                )}
+
+                <div className="plan-icon" style={{ background: colors.iconBg }}>
+                  <span style={{ color: colors.iconColor }}>{TIER_ICONS[tier]}</span>
+                </div>
+
+                <h2 className="plan-name">{cfg.label}</h2>
+                <p className="plan-desc">{cfg.description}</p>
+
+                <div className="plan-price">
+                  <span className="plan-price-num">${cfg.price}</span>
+                  <span className="plan-price-unit">/mes</span>
+                </div>
+
+                <div className="plan-limits">
+                  <div className="plan-limit-item">
+                    <p className="plan-limit-val">{cfg.limits.projects}</p>
+                    <p className="plan-limit-label">proyectos</p>
+                  </div>
+                  <div className="plan-limit-item">
+                    <p className="plan-limit-val">{cfg.limits.users}</p>
+                    <p className="plan-limit-label">usuarios</p>
+                  </div>
+                  <div className="plan-limit-item">
+                    <p className="plan-limit-val">{cfg.limits.clients}</p>
+                    <p className="plan-limit-label">clientes</p>
+                  </div>
+                </div>
+
+                <ul className="plan-features">
+                  {cfg.features.map((f, i) => (
+                    <li key={i} className="plan-feature">
+                      <Check size={13} color="#4ade80" style={{ flexShrink: 0, marginTop: 1 }} />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                {isCurrent ? (
+                  <button disabled className="plan-btn" style={{ background: 'rgba(255,255,255,0.05)' }}>Plan actual</button>
+                ) : (
+                  <button className="plan-btn" style={{ background: colors.btnBg }}>
+                    {currentTier && ['starter','professional','agency'].indexOf(tier) > ['starter','professional','agency'].indexOf(currentTier)
+                      ? `Actualizar a ${cfg.label}`
+                      : `Cambiar a ${cfg.label}`}
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Comparación */}
+        <div className="compare-panel">
+          <div className="compare-header">Comparación de funcionalidades</div>
+          <table className="compare-table">
             <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Fecha</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Período</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Monto</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Estado</th>
+              <tr>
+                <th>Funcionalidad</th>
+                <th>Starter</th>
+                <th className="col-pro">Professional</th>
+                <th>Agency</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {invoices.map((inv: { id: string; created_at: string; period_start: string; period_end: string; amount_usd: number; status: string }) => (
-                <tr key={inv.id}>
-                  <td className="px-6 py-3 text-sm text-gray-700">
-                    {new Date(inv.created_at).toLocaleDateString('es-AR')}
-                  </td>
-                  <td className="px-6 py-3 text-sm text-gray-500">
-                    {inv.period_start && inv.period_end
-                      ? `${new Date(inv.period_start).toLocaleDateString('es-AR')} – ${new Date(inv.period_end).toLocaleDateString('es-AR')}`
-                      : '—'}
-                  </td>
-                  <td className="px-6 py-3 text-sm font-medium text-gray-900">${inv.amount_usd}</td>
-                  <td className="px-6 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      inv.status === 'paid' ? 'bg-green-100 text-green-700' :
-                      inv.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {inv.status === 'paid' ? 'Pagada' : inv.status === 'pending' ? 'Pendiente' : 'Fallida'}
-                    </span>
-                  </td>
+            <tbody>
+              {[
+                { label: 'Proyectos',                        starter: '3',       pro: 'Ilimitados', agency: 'Ilimitados' },
+                { label: 'Usuarios',                         starter: '2',       pro: '5',          agency: 'Ilimitados' },
+                { label: 'Exportación PDF / PPTX',           starter: '✓',       pro: '✓',          agency: '✓' },
+                { label: 'Framework OWASP',                  starter: '✓',       pro: '✓',          agency: '✓' },
+                { label: 'ISO 27001 / PCI-DSS / NIST / CIS', starter: '—',      pro: '✓',          agency: '✓' },
+                { label: 'Portal de remediación clientes',   starter: '—',       pro: '✓',          agency: '✓' },
+                { label: 'Importación Nessus / ZAP / Burp',  starter: '—',      pro: '✓',          agency: '✓' },
+                { label: 'Análisis de código con IA',        starter: 'Básico', pro: 'Avanzado',   agency: 'Avanzado' },
+                { label: 'Marca blanca en reportes',         starter: '—',       pro: '—',          agency: '✓' },
+                { label: 'API REST',                         starter: '—',       pro: '—',          agency: '✓' },
+                { label: 'Soporte',                          starter: 'Email',  pro: 'Prioritario', agency: '24/7' },
+              ].map(row => (
+                <tr key={row.label}>
+                  <td>{row.label}</td>
+                  <td>{row.starter}</td>
+                  <td className="col-pro">{row.pro}</td>
+                  <td>{row.agency}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
-    </div>
+
+        {/* Facturas */}
+        {invoices && invoices.length > 0 && (
+          <div className="invoices-panel">
+            <div className="compare-header">Historial de facturación</div>
+            <table className="inv-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Período</th>
+                  <th>Monto</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((inv: { id: string; created_at: string; period_start: string; period_end: string; amount_usd: number; status: string }) => (
+                  <tr key={inv.id}>
+                    <td>{new Date(inv.created_at).toLocaleDateString('es-AR')}</td>
+                    <td style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      {inv.period_start && inv.period_end
+                        ? `${new Date(inv.period_start).toLocaleDateString('es-AR')} – ${new Date(inv.period_end).toLocaleDateString('es-AR')}`
+                        : '—'}
+                    </td>
+                    <td style={{ color: '#fff', fontWeight: 600 }}>${inv.amount_usd}</td>
+                    <td>
+                      <span className={`inv-badge ${inv.status === 'paid' ? 'inv-paid' : inv.status === 'pending' ? 'inv-pending' : 'inv-failed'}`}>
+                        {inv.status === 'paid' ? 'Pagada' : inv.status === 'pending' ? 'Pendiente' : 'Fallida'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
   )
 }

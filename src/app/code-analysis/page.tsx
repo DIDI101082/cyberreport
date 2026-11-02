@@ -114,359 +114,351 @@ export default function CodeAnalysisPage() {
   const categories = [...new Set(allIssues.map(i => i.category))]
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center">
-          <Code2 className="w-5 h-5 text-indigo-600" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Code Security Analyzer</h1>
-          <p className="text-gray-500 text-sm">Análisis de seguridad con IA — más proactivo que SonarQube</p>
-        </div>
-      </div>
+    <>
+      <style>{`
+        .ca-wrap { padding: 24px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: #fff; }
+        .ca-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .ca-icon { width: 38px; height: 38px; border-radius: 10px; background: rgba(99,102,241,0.2); border: 1px solid rgba(129,140,248,0.2); display: flex; align-items: center; justify-content: center; }
+        .ca-title { font-size: 18px; font-weight: 700; color: #fff; margin: 0 0 2px; }
+        .ca-sub { font-size: 12px; color: rgba(255,255,255,0.4); margin: 0; }
+        .ca-grid { display: grid; grid-template-columns: 240px 1fr; gap: 16px; }
+        .ca-panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; }
+        .ca-panel-body { padding: 14px; }
+        .ca-section-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+        .ca-fw-label { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 0; font-size: 13px; color: rgba(255,255,255,0.6); }
+        .ca-fw-label:hover { color: rgba(255,255,255,0.9); }
+        .ca-fw-label input { accent-color: #6366f1; }
+        .ca-dropzone { border: 2px dashed rgba(255,255,255,0.12); border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer; transition: all 0.15s; margin: 12px 0; }
+        .ca-dropzone.active { border-color: rgba(99,102,241,0.6); background: rgba(99,102,241,0.08); }
+        .ca-dropzone:hover { border-color: rgba(255,255,255,0.2); }
+        .ca-file-item { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+        .ca-file-name { font-size: 11px; color: rgba(255,255,255,0.5); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+        .ca-file-rm { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.2); padding: 0; display: flex; align-items: center; }
+        .ca-file-rm:hover { color: #f87171; }
+        .ca-btn { width: 100%; padding: 10px; border-radius: 10px; background: rgba(99,102,241,0.85); border: 1px solid rgba(129,140,248,0.3); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s; }
+        .ca-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .ca-btn:not(:disabled):hover { background: rgba(99,102,241,1); }
+        .ca-empty { padding: 60px 20px; text-align: center; }
+        .ca-empty-text { font-size: 13px; color: rgba(255,255,255,0.3); margin: 12px 0 0; }
+        .ca-score-header { padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: space-between; }
+        .ca-grade { font-size: 52px; font-weight: 900; line-height: 1; }
+        .ca-score-num { font-size: 26px; font-weight: 700; color: #fff; }
+        .ca-score-label { font-size: 12px; color: rgba(255,255,255,0.4); }
+        .ca-subscores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .ca-subscore { text-align: center; }
+        .ca-breakdown { display: flex; gap: 8px; padding: 12px 18px; flex-wrap: wrap; }
+        .ca-sev-btn { flex: 1; padding: 8px 6px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); transition: all 0.12s; }
+        .ca-sev-btn:hover { background: rgba(255,255,255,0.07); }
+        .ca-positives { margin: 0 0 12px; padding: 12px 14px; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.15); border-radius: 10px; }
+        .ca-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+        .ca-filter-btn { padding: 4px 12px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.5); cursor: pointer; font-family: inherit; transition: all 0.12s; }
+        .ca-filter-btn.active { background: rgba(99,102,241,0.3); border-color: rgba(129,140,248,0.4); color: #c7d2fe; }
+        .ca-issue { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 11px; margin-bottom: 8px; overflow: hidden; }
+        .ca-issue.open { border-color: rgba(99,102,241,0.35); }
+        .ca-issue-btn { width: 100%; display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; text-align: left; background: none; border: none; cursor: pointer; font-family: inherit; color: #fff; }
+        .ca-issue-title { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.85); margin: 0 0 3px; }
+        .ca-issue-meta { font-size: 11px; color: rgba(255,255,255,0.3); margin: 0; font-family: monospace; }
+        .ca-detail { padding: 0 14px 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+        .ca-code { background: rgba(0,0,0,0.5); border-radius: 9px; overflow: hidden; margin: 10px 0; }
+        .ca-code-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; background: rgba(0,0,0,0.3); }
+        .ca-code-name { font-size: 11px; color: rgba(255,255,255,0.35); font-family: monospace; }
+        .ca-code-copy { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.3); padding: 0; display: flex; align-items: center; }
+        .ca-code-copy:hover { color: #fff; }
+        .ca-how-to { background: rgba(37,99,235,0.1); border: 1px solid rgba(59,130,246,0.15); border-radius: 9px; padding: 10px 12px; margin: 10px 0; }
+        .ca-how-label { font-size: 11px; font-weight: 600; color: #60a5fa; margin: 0 0 4px; display: flex; align-items: center; gap: 6px; }
+        .ca-how-text { font-size: 12px; color: rgba(255,255,255,0.6); margin: 0; }
+        .ca-compliance-ref { font-size: 11px; padding: 3px 8px; background: rgba(124,58,237,0.15); border: 1px solid rgba(167,139,250,0.2); border-radius: 6px; color: #c084fc; font-family: monospace; }
+        .ca-fix-btn { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #818cf8; background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
+        .ca-fix-btn:disabled { opacity: 0.5; }
+        .ca-meta-row { display: flex; gap: 16px; font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 10px; }
+        .analyzing-box { background: rgba(99,102,241,0.08); border: 1px solid rgba(129,140,248,0.15); border-radius: 10px; padding: 14px; text-align: center; margin-top: 10px; }
+        .bounce-dot { width: 7px; height: 7px; border-radius: 50%; background: #818cf8; display: inline-block; animation: bounce 0.8s infinite; }
+      `}</style>
 
-      <div className="grid grid-cols-3 gap-6 mt-6">
-        {/* Panel izquierdo: configuración + upload */}
-        <div className="col-span-1 space-y-4">
-
-          {/* Frameworks */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-sm font-semibold text-gray-700 mb-3">Marcos a verificar</p>
-            <div className="space-y-1.5">
-              {FRAMEWORKS.map(fw => (
-                <label key={fw} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedFrameworks.includes(fw)}
-                    onChange={() => setSelectedFrameworks(prev =>
-                      prev.includes(fw) ? prev.filter(x => x !== fw) : [...prev, fw]
-                    )}
-                    className="w-3.5 h-3.5 rounded text-indigo-600"
-                  />
-                  <span className="text-sm text-gray-700">{fw}</span>
-                </label>
-              ))}
-            </div>
+      <div className="ca-wrap">
+        <div className="ca-header">
+          <div className="ca-icon">
+            <Code2 size={18} color="#818cf8" />
           </div>
-
-          {/* Dropzone */}
-          <div
-            {...getRootProps()}
-            className={`bg-white rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors ${
-              isDragActive ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:border-indigo-300'
-            }`}
-          >
-            <input {...getInputProps()} />
-            <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm font-medium text-gray-600">Arrastrá archivos o hacé click</p>
-            <p className="text-xs text-gray-400 mt-1">.ts .tsx .js .jsx .py .php .java .go...</p>
+          <div>
+            <h1 className="ca-title">Code Security Analyzer</h1>
+            <p className="ca-sub">Análisis de seguridad con IA — más proactivo que SonarQube</p>
           </div>
+        </div>
 
-          {/* Lista de archivos */}
-          {files.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase mb-2">{files.length} archivo{files.length > 1 ? 's' : ''}</p>
-              <div className="space-y-1 max-h-40 overflow-y-auto">
-                {files.map(f => (
-                  <div key={f.path} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileCode className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                      <span className="text-xs text-gray-600 truncate">{f.path}</span>
+        <div className="ca-grid">
+          {/* Panel izquierdo */}
+          <div>
+            <div className="ca-panel">
+              <div className="ca-panel-body">
+                <p className="ca-section-label">Marcos a verificar</p>
+                {FRAMEWORKS.map(fw => (
+                  <label key={fw} className="ca-fw-label">
+                    <input
+                      type="checkbox"
+                      checked={selectedFrameworks.includes(fw)}
+                      onChange={() => setSelectedFrameworks(prev =>
+                        prev.includes(fw) ? prev.filter(x => x !== fw) : [...prev, fw]
+                      )}
+                    />
+                    {fw}
+                  </label>
+                ))}
+
+                <div
+                  {...getRootProps()}
+                  className={`ca-dropzone${isDragActive ? ' active' : ''}`}
+                >
+                  <input {...getInputProps()} />
+                  <Upload size={24} color="rgba(255,255,255,0.2)" />
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '8px 0 3px', fontWeight: 500 }}>
+                    Arrastrá o hacé click
+                  </p>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', margin: 0 }}>
+                    .ts .js .py .php .java .go…
+                  </p>
+                </div>
+
+                {files.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <p className="ca-section-label" style={{ marginBottom: 8 }}>{files.length} archivo{files.length > 1 ? 's' : ''}</p>
+                    <div style={{ maxHeight: 120, overflowY: 'auto' }}>
+                      {files.map(f => (
+                        <div key={f.path} className="ca-file-item">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                            <FileCode size={11} color="rgba(255,255,255,0.3)" style={{ flexShrink: 0 }} />
+                            <span className="ca-file-name">{f.path}</span>
+                          </div>
+                          <button className="ca-file-rm" onClick={() => setFiles(p => p.filter(x => x.path !== f.path))}>
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                    <button onClick={() => setFiles(p => p.filter(x => x.path !== f.path))} className="text-gray-300 hover:text-red-400 ml-1">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
                   </div>
-                ))}
+                )}
+
+                <button onClick={handleAnalyze} disabled={!files.length || analyzing} className="ca-btn">
+                  {analyzing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
+                  {analyzing ? 'Analizando…' : 'Analizar código'}
+                </button>
+
+                {analyzing && (
+                  <div className="analyzing-box">
+                    <p style={{ fontSize: 11, color: '#c7d2fe', margin: '0 0 8px', fontWeight: 500 }}>
+                      Análisis estático → IA profunda → Fixes…
+                    </p>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                      {[0,1,2].map(i => (
+                        <div key={i} className="bounce-dot" style={{ animationDelay: `${i*0.15}s` }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
-          <button
-            onClick={handleAnalyze}
-            disabled={!files.length || analyzing}
-            className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-          >
-            {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {analyzing ? 'Analizando con IA…' : 'Analizar código'}
-          </button>
-
-          {analyzing && (
-            <div className="bg-indigo-50 rounded-xl p-4 text-center">
-              <p className="text-xs text-indigo-700 font-medium">Análisis estático → IA profunda → Generando fixes…</p>
-              <div className="mt-2 flex gap-1 justify-center">
-                {[0,1,2].map(i => (
-                  <div key={i} className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />
-                ))}
+          {/* Panel derecho */}
+          <div>
+            {!session ? (
+              <div className="ca-panel">
+                <div className="ca-empty">
+                  <Shield size={36} color="rgba(255,255,255,0.08)" />
+                  <p className="ca-empty-text">Subí archivos de código para iniciar el análisis</p>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Panel derecho: resultados */}
-        <div className="col-span-2 space-y-4">
-          {!session ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-16 text-center">
-              <Shield className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm">Subí archivos de código para iniciar el análisis</p>
-            </div>
-          ) : (
-            <>
-              {/* Health Score Dashboard */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Salud del código</p>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-5xl font-black ${getGradeColor(session.health_score.grade)}`}>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Score card */}
+                <div className="ca-panel">
+                  <div className="ca-score-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <span className="ca-grade" style={{ color: getGradeColor(session.health_score.grade) }}>
                         {session.health_score.grade}
                       </span>
                       <div>
-                        <p className="text-2xl font-bold text-gray-900">{session.health_score.overall}<span className="text-base text-gray-400 font-normal">/100</span></p>
-                        <p className="text-sm text-gray-500">{getScoreLabel(session.health_score.overall)}</p>
+                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 2px', fontWeight: 600 }}>Salud del código</p>
+                        <p className="ca-score-num">{session.health_score.overall}<span style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>/100</span></p>
+                        <p className="ca-score-label">{getScoreLabel(session.health_score.overall)}</p>
                       </div>
                     </div>
+                    <div style={{ textAlign: 'right', fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
+                      <p style={{ margin: '0 0 2px' }}>{session.files_analyzed} archivos</p>
+                      <p style={{ margin: '0 0 2px' }}>{session.lines_analyzed.toLocaleString()} líneas</p>
+                      <p style={{ margin: 0 }}>{(session.duration_ms / 1000).toFixed(1)}s</p>
+                    </div>
                   </div>
-                  <div className="text-right text-xs text-gray-400">
-                    <p>{session.files_analyzed} archivos</p>
-                    <p>{session.lines_analyzed.toLocaleString()} líneas</p>
-                    <p>{(session.duration_ms / 1000).toFixed(1)}s</p>
+
+                  <div className="ca-subscores">
+                    {[
+                      { label: 'Seguridad', score: session.health_score.security },
+                      { label: 'Compliance', score: session.health_score.compliance },
+                      { label: 'Calidad', score: session.health_score.quality },
+                    ].map(({ label, score }) => (
+                      <div key={label} className="ca-subscore">
+                        <div style={{ position: 'relative', width: 56, height: 56, margin: '0 auto 6px' }}>
+                          <svg width="56" height="56" style={{ transform: 'rotate(-90deg)' }}>
+                            <circle cx="28" cy="28" r="22" stroke="rgba(255,255,255,0.08)" strokeWidth="5" fill="none" />
+                            <circle
+                              cx="28" cy="28" r="22"
+                              stroke={score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444'}
+                              strokeWidth="5" fill="none"
+                              strokeDasharray={`${(score / 100) * 138.2} 138.2`}
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                          <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' }}>{score}</span>
+                        </div>
+                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="ca-breakdown">
+                    {(['critical','high','medium','low','info'] as IssueSeverity[]).map(s => {
+                      const count = session.health_score.breakdown[s]
+                      const cfg = SEVERITY_CONFIG[s]
+                      const isActive = severityFilter === s
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => setSeverityFilter(prev => prev === s ? 'all' : s)}
+                          className="ca-sev-btn"
+                          style={isActive ? { background: cfg.bg, color: cfg.color, borderColor: cfg.border } : {}}
+                        >
+                          <p style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px', color: 'inherit' }}>{count}</p>
+                          <p style={{ margin: 0 }}>{cfg.label}</p>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
-                {/* 3 subscores */}
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  {[
-                    { label: 'Seguridad', score: session.health_score.security },
-                    { label: 'Compliance', score: session.health_score.compliance },
-                    { label: 'Calidad', score: session.health_score.quality },
-                  ].map(({ label, score }) => (
-                    <div key={label} className="text-center">
-                      <div className="relative w-16 h-16 mx-auto mb-1">
-                        <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
-                          <circle cx="32" cy="32" r="26" stroke="#f1f5f9" strokeWidth="6" fill="none" />
-                          <circle
-                            cx="32" cy="32" r="26"
-                            stroke={score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444'}
-                            strokeWidth="6" fill="none"
-                            strokeDasharray={`${(score / 100) * 163.4} 163.4`}
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-900">
-                          {score}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500">{label}</p>
+                {/* Positivos */}
+                {positives.length > 0 && (
+                  <div className="ca-positives">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <CheckCircle size={14} color="#4ade80" />
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#4ade80', margin: 0 }}>Aspectos bien implementados</p>
                     </div>
+                    {positives.map((p, i) => (
+                      <p key={i} style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', margin: '0 0 3px' }}>• {p}</p>
+                    ))}
+                  </div>
+                )}
+
+                {/* Filtros categoría */}
+                <div className="ca-filters">
+                  <button
+                    onClick={() => setCategoryFilter('all')}
+                    className={`ca-filter-btn${categoryFilter === 'all' ? ' active' : ''}`}
+                  >
+                    Todas
+                  </button>
+                  {categories.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setCategoryFilter(prev => prev === cat ? 'all' : cat)}
+                      className={`ca-filter-btn${categoryFilter === cat ? ' active' : ''}`}
+                    >
+                      {CATEGORY_LABELS[cat] ?? cat}
+                    </button>
                   ))}
                 </div>
 
-                {/* Breakdown por severidad */}
-                <div className="flex gap-3">
-                  {(['critical','high','medium','low','info'] as IssueSeverity[]).map(s => {
-                    const count = session.health_score.breakdown[s]
-                    const cfg = SEVERITY_CONFIG[s]
-                    return (
-                      <button
-                        key={s}
-                        onClick={() => setSeverityFilter(prev => prev === s ? 'all' : s)}
-                        className={`flex-1 text-center py-2 rounded-lg border text-xs font-medium transition-colors ${
-                          severityFilter === s ? `${cfg.bg} ${cfg.color} ${cfg.border}` : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <p className="text-lg font-bold">{count}</p>
-                        <p>{cfg.label}</p>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Positivos */}
-              {positives.length > 0 && (
-                <div className="bg-green-50 rounded-xl border border-green-200 p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <p className="text-sm font-semibold text-green-800">Aspectos bien implementados</p>
+                {/* Issues */}
+                {filtered.length === 0 ? (
+                  <div className="ca-panel" style={{ padding: '40px 20px', textAlign: 'center' }}>
+                    <CheckCircle size={28} color="#4ade80" />
+                    <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 10 }}>Sin issues con el filtro actual</p>
                   </div>
-                  <ul className="space-y-1">
-                    {positives.map((p, i) => (
-                      <li key={i} className="text-xs text-green-700">• {p}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Filtros por categoría */}
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => setCategoryFilter('all')}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    categoryFilter === 'all' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  Todas
-                </button>
-                {categories.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setCategoryFilter(prev => prev === cat ? 'all' : cat)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                      categoryFilter === cat ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-                    }`}
-                  >
-                    {CATEGORY_LABELS[cat] ?? cat}
-                  </button>
-                ))}
-              </div>
-
-              {/* Lista de issues */}
-              <div className="space-y-2">
-                {filtered.length === 0 && (
-                  <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
-                    <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">No se encontraron issues con el filtro actual</p>
-                  </div>
-                )}
-                {filtered.map(issue => {
+                ) : filtered.map(issue => {
                   const isOpen = expandedIssue === issue.id
                   const cfg = SEVERITY_CONFIG[issue.severity as keyof typeof SEVERITY_CONFIG]
                   const fix = fixes[issue.id]
 
                   return (
-                    <div key={issue.id} className={`bg-white rounded-xl border transition-all ${isOpen ? 'border-indigo-200 shadow-sm' : 'border-gray-200'}`}>
-                      {/* Issue header */}
+                    <div key={issue.id} className={`ca-issue${isOpen ? ' open' : ''}`}>
                       <button
-                        className="w-full flex items-start gap-3 p-4 text-left"
+                        className="ca-issue-btn"
                         onClick={() => setExpandedIssue(prev => prev === issue.id ? null : issue.id)}
                       >
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 mt-0.5 ${cfg.bg} ${cfg.color} ${cfg.border} border`}>
+                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, fontWeight: 600, flexShrink: 0, marginTop: 2, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
                           {cfg.label}
                         </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">{issue.title}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p className="ca-issue-title">{issue.title}</p>
+                          <p className="ca-issue-meta">
                             {issue.file_path}:{issue.line_start}
-                            {issue.line_end && issue.line_end !== issue.line_start ? `–${issue.line_end}` : ''}
-                            {' · '}{CATEGORY_LABELS[issue.category] ?? issue.category}
+                            {issue.line_end && issue.line_end !== issue.line_start ? `–${issue.line_end}` : ''}{' · '}
+                            {CATEGORY_LABELS[issue.category] ?? issue.category}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {/* Compliance badges */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                           {issue.compliance_refs.slice(0, 2).map(ref => (
-                            <span key={ref.id} className="text-xs px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded font-mono">
-                              {ref.id}
-                            </span>
+                            <span key={ref.id} className="ca-compliance-ref">{ref.id}</span>
                           ))}
-                          {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                          {isOpen ? <ChevronDown size={14} color="rgba(255,255,255,0.3)" /> : <ChevronRight size={14} color="rgba(255,255,255,0.3)" />}
                         </div>
                       </button>
 
-                      {/* Issue detail */}
                       {isOpen && (
-                        <div className="px-4 pb-4 border-t border-gray-100 pt-4 space-y-4">
-                          <p className="text-sm text-gray-700">{issue.description}</p>
+                        <div className="ca-detail">
+                          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 10 }}>{issue.description}</p>
 
-                          {/* Code snippet */}
-                          <div className="bg-gray-900 rounded-lg overflow-hidden">
-                            <div className="flex items-center justify-between px-3 py-2 bg-gray-800">
-                              <span className="text-xs text-gray-400 font-mono">{issue.file_path}</span>
-                              <button
-                                onClick={() => navigator.clipboard.writeText(issue.code_snippet)}
-                                className="text-gray-400 hover:text-white"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
+                          <div className="ca-code">
+                            <div className="ca-code-header">
+                              <span className="ca-code-name">{issue.file_path}</span>
+                              <button className="ca-code-copy" onClick={() => navigator.clipboard.writeText(issue.code_snippet)}>
+                                <Copy size={12} />
                               </button>
                             </div>
-                            <pre className="p-3 text-xs text-green-300 font-mono overflow-x-auto">
+                            <pre style={{ margin: 0, padding: '10px 14px', fontSize: 12, color: '#86efac', fontFamily: 'monospace', overflowX: 'auto' }}>
                               {issue.code_snippet}
                             </pre>
                           </div>
 
-                          {/* Fix explanation */}
-                          <div className="bg-blue-50 rounded-lg p-3">
-                            <p className="text-xs font-semibold text-blue-800 mb-1 flex items-center gap-1.5">
-                              <Info className="w-3.5 h-3.5" /> Cómo corregirlo
-                            </p>
-                            <p className="text-xs text-blue-700">{issue.fix_explanation}</p>
+                          <div className="ca-how-to">
+                            <p className="ca-how-label"><Info size={12} />Cómo corregirlo</p>
+                            <p className="ca-how-text">{issue.fix_explanation}</p>
                           </div>
 
-                          {/* Compliance refs */}
                           {issue.compliance_refs.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '10px 0' }}>
                               {issue.compliance_refs.map(ref => (
-                                <a
-                                  key={ref.id}
-                                  href={ref.url ?? '#'}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded-full border border-purple-100 hover:bg-purple-100 transition-colors"
-                                >
+                                <a key={ref.id} href={ref.url ?? '#'} target="_blank" rel="noopener noreferrer" className="ca-compliance-ref" style={{ textDecoration: 'none' }}>
                                   {ref.framework} {ref.id} — {ref.label}
                                 </a>
                               ))}
                             </div>
                           )}
 
-                          {/* AI Fix */}
                           {!fix ? (
-                            <button
-                              onClick={() => handleGetFix(issue)}
-                              disabled={fixLoading === issue.id}
-                              className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-60"
-                            >
-                              {fixLoading === issue.id ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <Sparkles className="w-3.5 h-3.5" />
-                              )}
+                            <button onClick={() => handleGetFix(issue)} disabled={fixLoading === issue.id} className="ca-fix-btn">
+                              {fixLoading === issue.id
+                                ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                                : <Sparkles size={13} />}
                               {fixLoading === issue.id ? 'Generando fix…' : 'Generar fix con IA'}
                             </button>
                           ) : (
-                            <div className="space-y-3">
-                              <div className="bg-green-900 rounded-lg overflow-hidden">
-                                <div className="flex items-center justify-between px-3 py-2 bg-green-800">
-                                  <span className="text-xs text-green-300 font-mono font-semibold">✓ Código corregido</span>
-                                  <button
-                                    onClick={() => navigator.clipboard.writeText(String(fix.fixed_snippet ?? ''))}
-                                    className="text-green-400 hover:text-white"
-                                  >
-                                    <Copy className="w-3.5 h-3.5" />
+                            <div>
+                              <div className="ca-code" style={{ border: '1px solid rgba(74,222,128,0.2)' }}>
+                                <div className="ca-code-header" style={{ background: 'rgba(74,222,128,0.1)' }}>
+                                  <span style={{ fontSize: 11, color: '#4ade80', fontFamily: 'monospace', fontWeight: 600 }}>✓ Código corregido</span>
+                                  <button className="ca-code-copy" onClick={() => navigator.clipboard.writeText(String(fix.fixed_snippet ?? ''))}>
+                                    <Copy size={12} />
                                   </button>
                                 </div>
-                                <pre className="p-3 text-xs text-green-200 font-mono overflow-x-auto">
+                                <pre style={{ margin: 0, padding: '10px 14px', fontSize: 12, color: '#bbf7d0', fontFamily: 'monospace', overflowX: 'auto' }}>
                                   {String(fix.fixed_snippet ?? '')}
                                 </pre>
                               </div>
-
-                              {fix.explanation && (
-                                <p className="text-xs text-gray-600">{String(fix.explanation)}</p>
-                              )}
-
-                              {fix.security_notes && fix.security_notes.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-semibold text-gray-700 mb-1">Notas de seguridad:</p>
-                                  {fix.security_notes.map((note, i) => (
-                                    <p key={i} className="text-xs text-gray-600">• {note}</p>
-                                  ))}
-                                </div>
-                              )}
-
-                              {fix.test_cases && fix.test_cases.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-semibold text-gray-700 mb-1">Casos de prueba:</p>
-                                  {fix.test_cases.map((tc, i) => (
-                                    <p key={i} className="text-xs text-gray-500 font-mono">• {tc}</p>
-                                  ))}
-                                </div>
-                              )}
+                              {fix.explanation && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '8px 0 0' }}>{String(fix.explanation)}</p>}
                             </div>
                           )}
 
-                          {/* Metadata */}
-                          <div className="flex gap-4 text-xs text-gray-400">
+                          <div className="ca-meta-row">
                             <span>Confianza IA: {Math.round(issue.ai_confidence * 100)}%</span>
                             <span>Falso positivo: {Math.round(issue.false_positive_probability * 100)}%</span>
                             <span>Esfuerzo: {issue.effort_to_fix}</span>
@@ -477,10 +469,10 @@ export default function CodeAnalysisPage() {
                   )
                 })}
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Shield, LayoutDashboard, FolderOpen, Building2,
+  LayoutDashboard, FolderOpen, Building2,
   FileText, Settings, LogOut, Code2, CreditCard, ChevronRight
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -35,71 +35,144 @@ export default function Sidebar() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
   return (
-    <aside className="w-60 bg-[#0d0d0f] min-h-screen flex flex-col border-r border-white/[0.06]">
+    <>
+      <style>{`
+        .sidebar {
+          width: 220px;
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          background: rgba(8, 15, 32, 0.95);
+          border-right: 1px solid rgba(255,255,255,0.07);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          flex-shrink: 0;
+        }
+        .sidebar-logo {
+          padding: 20px 18px 16px;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .sidebar-logo-text {
+          font-size: 17px;
+          font-weight: 700;
+          letter-spacing: -0.3px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .logo-accusys { color: #ffffff; }
+        .logo-sep { color: rgba(255,255,255,0.25); margin: 0 7px; font-weight: 300; }
+        .logo-product { color: #60a5fa; }
+        .sidebar-section {
+          padding: 14px 12px 4px;
+          font-size: 10px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          color: rgba(255,255,255,0.2);
+        }
+        .sidebar-nav {
+          flex: 1;
+          padding: 0 10px 12px;
+        }
+        .sidebar-link {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 10px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 450;
+          color: rgba(255,255,255,0.45);
+          text-decoration: none;
+          transition: all 0.15s ease;
+          margin-bottom: 2px;
+        }
+        .sidebar-link:hover {
+          color: rgba(255,255,255,0.85);
+          background: rgba(255,255,255,0.06);
+        }
+        .sidebar-link.active {
+          color: #ffffff;
+          background: rgba(37,99,235,0.3);
+          border: 1px solid rgba(59,130,246,0.25);
+        }
+        .sidebar-link.active .nav-icon { color: #60a5fa; }
+        .nav-icon { width: 15px; height: 15px; flex-shrink: 0; }
+        .sidebar-link-label { flex: 1; }
+        .sidebar-link-arrow { width: 12px; height: 12px; color: rgba(255,255,255,0.2); }
+        .sidebar-bottom {
+          padding: 10px;
+          border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .sidebar-btn {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 10px;
+          border-radius: 8px;
+          font-size: 13px;
+          color: rgba(255,255,255,0.3);
+          background: none;
+          border: none;
+          cursor: pointer;
+          width: 100%;
+          transition: all 0.15s ease;
+          font-family: inherit;
+          margin-bottom: 2px;
+          text-decoration: none;
+        }
+        .sidebar-btn:hover {
+          color: rgba(255,255,255,0.7);
+          background: rgba(255,255,255,0.05);
+        }
+        .sidebar-btn.active {
+          color: #ffffff;
+          background: rgba(37,99,235,0.3);
+          border: 1px solid rgba(59,130,246,0.25);
+        }
+      `}</style>
 
-      {/* Logo */}
-      <div className="px-5 py-5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/30">
-            <Shield className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <p className="text-white text-sm font-semibold tracking-tight">CyberReport</p>
-            <p className="text-white/30 text-[11px]">by Accusys</p>
-          </div>
+      <aside className="sidebar">
+        {/* Logo */}
+        <div className="sidebar-logo">
+          <span className="sidebar-logo-text">
+            <span className="logo-accusys">//accusys</span>
+            <span className="logo-sep">|</span>
+            <span className="logo-product">CyberReport</span>
+          </span>
         </div>
-      </div>
 
-      {/* Nav principal */}
-      <nav className="flex-1 px-3 pt-1 pb-4 space-y-0.5">
-        <p className="text-white/20 text-[10px] font-semibold uppercase tracking-widest px-2 pb-2">Plataforma</p>
-        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
-          const active = isActive(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
-                active
-                  ? 'bg-white/10 text-white'
-                  : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05]'
-              }`}
-            >
-              <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-blue-400' : ''}`} />
-              <span className="flex-1">{label}</span>
-              {active && <ChevronRight className="w-3 h-3 text-white/20" />}
-            </Link>
-          )
-        })}
-      </nav>
+        {/* Nav principal */}
+        <div className="sidebar-section">Plataforma</div>
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
+            const active = isActive(href)
+            return (
+              <Link key={href} href={href} className={`sidebar-link${active ? ' active' : ''}`}>
+                <Icon className="nav-icon" />
+                <span className="sidebar-link-label">{label}</span>
+                {active && <ChevronRight className="sidebar-link-arrow" />}
+              </Link>
+            )
+          })}
+        </nav>
 
-      {/* Bottom nav */}
-      <div className="px-3 pb-3 border-t border-white/[0.06] pt-3 space-y-0.5">
-        {BOTTOM_NAV.map(({ href, icon: Icon, label }) => {
-          const active = isActive(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
-                active
-                  ? 'bg-white/10 text-white'
-                  : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05]'
-              }`}
-            >
-              <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-blue-400' : ''}`} />
-              {label}
-            </Link>
-          )
-        })}
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/30 hover:text-white/70 hover:bg-white/[0.05] transition-all w-full"
-        >
-          <LogOut className="w-4 h-4" />
-          Cerrar sesión
-        </button>
-      </div>
-    </aside>
+        {/* Bottom */}
+        <div className="sidebar-bottom">
+          {BOTTOM_NAV.map(({ href, icon: Icon, label }) => {
+            const active = isActive(href)
+            return (
+              <Link key={href} href={href} className={`sidebar-btn${active ? ' active' : ''}`}>
+                <Icon className="nav-icon" style={{ width: 15, height: 15, flexShrink: 0 }} />
+                {label}
+              </Link>
+            )
+          })}
+          <button onClick={handleLogout} className="sidebar-btn">
+            <LogOut style={{ width: 15, height: 15, flexShrink: 0 }} />
+            Cerrar sesión
+          </button>
+        </div>
+      </aside>
+    </>
   )
 }
