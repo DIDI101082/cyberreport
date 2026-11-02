@@ -1,0 +1,36 @@
+{
+  "name": "accusys-cyberreport",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@supabase/ssr": "^0.5.1",
+    "@supabase/supabase-js": "^2.45.4",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.3",
+    "lucide-react": "^0.462.0",
+    "next": "14.2.16",
+    "pptxgenjs": "^3.12.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-dropzone": "^14.3.5",
+    "recharts": "^2.13.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.16",
+    "tailwindcss": "^3.4.1",
+    "postcss": "^8",
+    "autoprefixer": "^10",
+    "typescript": "^5"
+  }
+}
