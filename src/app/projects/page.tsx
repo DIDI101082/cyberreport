@@ -64,7 +64,7 @@ export default async function ProjectsPage() {
                   <div>
                     <p className="font-medium text-gray-900 group-hover:text-blue-600">{project.name}</p>
                     <p className="text-sm text-gray-500 mt-0.5">
-                      {(project.organization as {name:string})?.name ?? '—'} · {TYPE_LABEL[project.type]}
+                      {(Array.isArray(project.organization) ? project.organization[0] : project.organization as {name:string} | null)?.name ?? '—'} · {TYPE_LABEL[project.type]}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       {critical > 0 && (

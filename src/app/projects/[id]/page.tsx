@@ -51,7 +51,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
           <p className="text-gray-500 text-sm mt-1">
-            {(project.organization as { name: string })?.name}
+            {(Array.isArray(project.organization) ? project.organization[0] : project.organization as { name: string } | null)?.name}
             {project.start_date && ` · ${new Date(project.start_date).toLocaleDateString('es')}`}
           </p>
         </div>
