@@ -3,7 +3,7 @@ import Link from 'next/link'
 import {
   Shield, AlertTriangle, CheckCircle, TrendingDown,
   ArrowRight, Clock, Flame, Activity, Lock, Globe,
-  ChevronRight, BarChart2, Zap
+  ChevronRight, BarChart2, Zap, FolderOpen, Code2, FileText
 } from 'lucide-react'
 
 const SEVERITY_DOT: Record<string, string> = {
