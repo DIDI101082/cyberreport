@@ -57,6 +57,9 @@ export interface Finding {
   cve_id?: string
   ai_generated: boolean
   evidence_urls?: string[]
+  evidence?: string
+  external_refs?: string[]
+  tool_source?: string
   status: FindingStatus
   created_at: string
   updated_at: string
