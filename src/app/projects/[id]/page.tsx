@@ -1,5 +1,3 @@
-cat /tmp/claude-0/-home-claude/ad32392a-cf54-58e4-b6d1-d92c290bd9cd/scratchpad/cyberreport/src/app/projects/\[id\]/page.tsx
-Respuesta
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -65,4 +63,22 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         .btn-green:hover { background: rgba(16,185,129,0.22); color: #6ee7b7; }
         .module-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
         .module-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 11px; padding: 14px 16px; text-decoration: none; display: flex; align-items: center; gap: 12px; transition: all 0.12s; }
-        .module-card:hover { background: rgba(255,255,255,0
+        .module-card:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.15); }
+        .module-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .module-label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.85); margin: 0 0 2px; }
+        .module-desc { font-size: 11px; color: rgba(255,255,255,0.35); margin: 0; }
+        .sev-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+        .sev-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 11px; padding: 14px 10px; text-align: center; }
+        .sev-count { font-size: 26px; font-weight: 800; margin: 0 0 4px; }
+        .findings-panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; }
+        .findings-header { padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; }
+        .findings-title { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.9); margin: 0; }
+        .finding-row { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; border-bottom: 1px solid rgba(255,255,255,0.05); text-decoration: none; transition: background 0.1s; }
+        .finding-row:last-child { border-bottom: none; }
+        .finding-row:hover { background: rgba(255,255,255,0.03); }
+        .finding-name { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.85); margin: 0 0 3px; }
+        .finding-row:hover .finding-name { color: #60a5fa; }
+        .finding-meta { font-size: 11px; color: rgba(255,255,255,0.3); margin: 0; font-family: monospace; display: flex; align-items: center; gap: 6px; }
+        .status-pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 99px; }
+        .empty-box { padding: 50px 20px; text-align: center; }
+        .empty-text {
