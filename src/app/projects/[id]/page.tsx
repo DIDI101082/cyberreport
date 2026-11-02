@@ -81,4 +81,141 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         .finding-meta { font-size: 11px; color: rgba(255,255,255,0.3); margin: 0; font-family: monospace; display: flex; align-items: center; gap: 6px; }
         .status-pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 99px; }
         .empty-box { padding: 50px 20px; text-align: center; }
-        .empty-text {
+        .empty-text { font-size: 13px; color: rgba(255,255,255,0.3); margin: 10px 0 12px; }
+        .empty-link { font-size: 13px; color: #60a5fa; text-decoration: none; }
+        .empty-link:hover { text-decoration: underline; }
+      `}</style>
+
+      <div className="pd-wrap">
+        <Link href="/projects" className="pd-back">
+          <ArrowLeft size={14} /> Proyectos
+        </Link>
+
+        <div className="pd-header">
+          <div>
+            <h1 className="pd-title">{project.name}</h1>
+            <p className="pd-sub">
+              {orgName ?? '—'}
+              {project.start_date && ` · ${new Date(project.start_date).toLocaleDateString('es')}`}
+            </p>
+          </div>
+          <div className="pd-actions">
+            <Link href={`/projects/${params.id}/report`} className="btn-outline">
+              <FileText size={13} />
+              Reporte
+            </Link>
+            <Link href={`/projects/${params.id}/import`} className="btn-outline">
+              <Upload size={13} />
+              Importar
+            </Link>
+            <Link href={`/projects/${params.id}/findings/new`} className="btn-primary">
+              <Plus size={13} />
+              Hallazgo
+            </Link>
+          </div>
+        </div>
+
+        <div className="module-grid">
+          <Link href={`/projects/${params.id}/remediation`} className="module-card">
+            <div className="module-icon" style={{ background: 'rgba(245,158,11,0.15)' }}>
+              <CheckCircle2 size={18} color="#fbbf24" />
+            </div>
+            <div>
+              <p className="module-label">Remediación</p>
+              <p className="module-desc">SLA · asignación · retesting</p>
+            </div>
+          </Link>
+          <Link href={`/projects/${params.id}/compliance`} className="module-card">
+            <div className="module-icon" style={{ background: 'rgba(99,102,241,0.15)' }}>
+              <ShieldCheck size={18} color="#818cf8" />
+            </div>
+            <div>
+              <p className="module-label">Compliance</p>
+              <p className="module-desc">ISO 27001 · PCI-DSS · NIST</p>
+            </div>
+          </Link>
+          <Link href={`/projects/${params.id}/client-portal`} className="module-card">
+            <div className="module-icon" style={{ background: 'rgba(16,185,129,0.15)' }}>
+              <Users size={18} color="#34d399" />
+            </div>
+            <div>
+              <p className="module-label">Portal Cliente</p>
+              <p className="module-desc">Acceso seguro · solo lectura</p>
+            </div>
+          </Link>
+        </div>
+
+        <div className="sev-grid">
+          {SEVERITY_ORDER.map(s => (
+            <div key={s} className="sev-card">
+              <p className="sev-count" style={{ color: SEV_COLORS[s] }}>{severityCounts[s]}</p>
+              <SeverityBadge severity={s} size="sm" />
+            </div>
+          ))}
+        </div>
+
+        <div className="findings-panel">
+          <div className="findings-header">
+            <h2 className="findings-title">
+              Hallazgos{' '}
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400, fontSize: 13 }}>
+                ({findings?.length ?? 0})
+              </span>
+            </h2>
+          </div>
+
+          {!findings?.length ? (
+            <div className="empty-box">
+              <FileText size={32} color="rgba(255,255,255,0.08)" />
+              <p className="empty-text">No hay hallazgos registrados</p>
+              <Link href={`/projects/${params.id}/findings/new`} className="empty-link">
+                Agregar el primero
+              </Link>
+            </div>
+          ) : (
+            findings.map(f => {
+              const st = STATUS_MAP[f.status] ?? STATUS_MAP.open
+              return (
+                <Link
+                  key={f.id}
+                  href={`/projects/${params.id}/findings/${f.id}`}
+                  className="finding-row"
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{ marginTop: 2 }}>
+                      <SeverityBadge severity={f.severity as SeverityLevel} size="sm" />
+                    </div>
+                    <div>
+                      <p className="finding-name">{f.title}</p>
+                      <p className="finding-meta">
+                        {f.cve_id && <span>{f.cve_id}</span>}
+                        {f.cve_id && f.category && <span>·</span>}
+                        {f.category && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            {f.category === 'web' ? <Globe size={10} /> : f.category === 'infrastructure' ? <Server size={10} /> : null}
+                            {f.category}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    {f.cvss_score && (
+                      <span style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 600, color: 'rgba(255,255,255,0.35)' }}>
+                        CVSS {f.cvss_score}
+                      </span>
+                    )}
+                    <span className="status-pill" style={{ background: st.bg, color: st.color }}>
+                      {st.label}
+                    </span>
+                    <ChevronRight size={14} color="rgba(255,255,255,0.25)" />
+                  </div>
+                </Link>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
