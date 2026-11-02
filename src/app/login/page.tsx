@@ -27,80 +27,152 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-blue-600"
-      style={{ background: 'linear-gradient(135deg, #1a56db 0%, #1e3a8a 100%)' }}>
+    <>
+      <style>{`
+        .login-bg {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #1a56db 0%, #1e3a8a 100%);
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .login-card {
+          width: 100%;
+          max-width: 380px;
+          margin: 0 16px;
+          background: rgba(255,255,255,0.13);
+          border: 1px solid rgba(255,255,255,0.22);
+          border-radius: 16px;
+          padding: 36px 32px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+        }
+        .login-logo {
+          text-align: center;
+          margin-bottom: 24px;
+        }
+        .login-logo-text {
+          font-size: 22px;
+          font-weight: 700;
+          letter-spacing: -0.3px;
+        }
+        .login-logo-accusys { color: #ffffff; }
+        .login-logo-sep { color: rgba(255,255,255,0.35); margin: 0 8px; font-weight: 300; }
+        .login-logo-product { color: #93c5fd; }
+        .login-title {
+          color: #fff;
+          font-size: 18px;
+          font-weight: 600;
+          text-align: center;
+          margin: 0 0 4px;
+        }
+        .login-subtitle {
+          color: rgba(255,255,255,0.65);
+          font-size: 13px;
+          text-align: center;
+          margin: 0 0 28px;
+        }
+        .login-label {
+          display: block;
+          color: rgba(255,255,255,0.8);
+          font-size: 13px;
+          font-weight: 500;
+          margin-bottom: 6px;
+        }
+        .login-input {
+          width: 100%;
+          background: rgba(255,255,255,0.15);
+          border: 1px solid rgba(255,255,255,0.25);
+          border-radius: 10px;
+          padding: 10px 14px;
+          font-size: 14px;
+          color: #fff;
+          outline: none;
+          box-sizing: border-box;
+          transition: border-color 0.2s;
+        }
+        .login-input::placeholder { color: rgba(255,255,255,0.38); }
+        .login-input:focus { border-color: rgba(255,255,255,0.6); }
+        .login-field { margin-bottom: 16px; }
+        .login-btn {
+          width: 100%;
+          background: rgba(255,255,255,0.95);
+          color: #1d4ed8;
+          border: none;
+          border-radius: 10px;
+          padding: 11px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-top: 8px;
+          transition: opacity 0.2s;
+        }
+        .login-btn:hover { opacity: 0.92; }
+        .login-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .login-error {
+          color: #fca5a5;
+          font-size: 13px;
+          text-align: center;
+          margin-bottom: 8px;
+        }
+        .login-footer {
+          color: rgba(255,255,255,0.35);
+          font-size: 12px;
+          text-align: center;
+          margin-top: 24px;
+        }
+      `}</style>
 
-      <div className="w-full max-w-sm px-4">
-        <div className="rounded-2xl p-8"
-          style={{
-            background: 'rgba(255,255,255,0.13)',
-            border: '1px solid rgba(255,255,255,0.22)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
-            backdropFilter: 'blur(12px)',
-          }}>
-
-          {/* Logo */}
-          <div className="text-center mb-6">
-            <div className="text-2xl font-bold mb-5">
-              <span className="text-white">//accusys</span>
-              <span className="text-white opacity-40 mx-2">|</span>
-              <span style={{ color: '#93c5fd' }}>CyberReport</span>
-            </div>
-            <p className="text-white font-semibold text-lg">Bienvenido</p>
-            <p className="text-white/70 text-sm mt-1">Ingresá con tu cuenta de la empresa</p>
+      <div className="login-bg">
+        <div className="login-card">
+          <div className="login-logo">
+            <span className="login-logo-text">
+              <span className="login-logo-accusys">//accusys</span>
+              <span className="login-logo-sep">|</span>
+              <span className="login-logo-product">CyberReport</span>
+            </span>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4 mt-6">
-            <div>
-              <label className="block text-sm font-medium text-white/80 mb-1.5">Email</label>
+          <p className="login-title">Bienvenido</p>
+          <p className="login-subtitle">Ingresá con tu cuenta de la empresa</p>
+
+          <form onSubmit={handleLogin}>
+            <div className="login-field">
+              <label className="login-label">Email</label>
               <input
                 type="email"
+                className="login-input"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
                 placeholder="usuario@empresa.com"
-                className="w-full rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none"
-                style={{
-                  background: 'rgba(255,255,255,0.15)',
-                  border: '1px solid rgba(255,255,255,0.25)',
-                }}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-white/80 mb-1.5">Contraseña</label>
+            <div className="login-field">
+              <label className="login-label">Contraseña</label>
               <input
                 type="password"
+                className="login-input"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none"
-                style={{
-                  background: 'rgba(255,255,255,0.15)',
-                  border: '1px solid rgba(255,255,255,0.25)',
-                }}
               />
             </div>
 
-            {error && (
-              <p className="text-red-300 text-sm text-center">{error}</p>
-            )}
+            {error && <p className="login-error">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-60 mt-2"
-              style={{ background: 'rgba(255,255,255,0.95)', color: '#1d4ed8' }}
-            >
+            <button type="submit" className="login-btn" disabled={loading}>
               {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-white/40 text-xs mt-6">
-          © 2026 Accusys. Todos los derechos reservados.
-        </p>
+        <p className="login-footer">© 2026 Accusys. Todos los derechos reservados.</p>
       </div>
-    </div>
+    </>
   )
 }
