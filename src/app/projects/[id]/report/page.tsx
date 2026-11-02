@@ -22,7 +22,9 @@ export default function ReportPage() {
       .single()
       .then(({ data }) => {
         if (data) {
-          setProject(data as typeof project)
+          const orgRaw = data.organization
+          const org = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as { name: string } | null
+          setProject({ name: data.name as string, organization: org })
           setFrameworks((data.target_frameworks as string[]) ?? [])
         }
       })
