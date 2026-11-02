@@ -115,8 +115,10 @@ export async function generatePDF(
       f.category ?? '—',
       f.cvss_score != null ? String(f.cvss_score) : '—',
       f.status === 'open' ? 'Abierto' :
-      f.status === 'resolved' ? 'Resuelto' :
-      f.status === 'in_review' ? 'En revisión' : 'Aceptado',
+      f.status === 'resolved' || f.status === 'mitigated' ? 'Resuelto' :
+      f.status === 'in_review' ? 'En revisión' :
+      f.status === 'in_progress' ? 'En progreso' :
+      f.status === 'false_positive' ? 'Falso positivo' : 'Aceptado',
     ]),
     headStyles: { fillColor: [15, 23, 42], fontSize: 9, fontStyle: 'bold' },
     bodyStyles: { fontSize: 8 },
