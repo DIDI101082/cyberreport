@@ -1,0 +1,298 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
+import { ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, AlertTriangle, Plus } from 'lucide-react'
+
+interface Finding {
+  id: string
+  title: string
+  severity: string
+  status: string
+  project_id: string
+}
+
+interface RetestRecord {
+  id: string
+  finding_id: string
+  result: 'pass' | 'fail' | 'partial'
+  notes: string | null
+  retested_by: string | null
+  retested_at: string
+  created_at: string
+}
+
+const RESULT_CONFIG = {
+  pass:    { label: 'Corregido',         color: '#4ade80', bg: 'rgba(74,222,128,0.12)',  border: 'rgba(74,222,128,0.3)',  icon: <CheckCircle2 size={14} /> },
+  partial: { label: 'Parcialmente corr.', color: '#facc15', bg: 'rgba(250,204,21,0.12)',  border: 'rgba(250,204,21,0.3)',  icon: <AlertTriangle size={14} /> },
+  fail:    { label: 'Persiste',          color: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)', icon: <XCircle size={14} /> },
+}
+
+const SEV_COLOR: Record<string, string> = {
+  critical: '#fca5a5', high: '#fdba74', medium: '#fde047', low: '#93c5fd', info: 'rgba(255,255,255,0.4)',
+}
+
+export default function RetestPage() {
+  const params = useParams<{ id: string; findingId: string }>()
+  const router = useRouter()
+  const supabase = createClient()
+
+  const [finding, setFinding] = useState<Finding | null>(null)
+  const [records, setRecords] = useState<RetestRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+
+  const [form, setForm] = useState({
+    result: 'fail' as 'pass' | 'fail' | 'partial',
+    notes: '',
+    retested_by: '',
+  })
+
+  const load = useCallback(async () => {
+    const [findRes, retestRes] = await Promise.all([
+      supabase.from('findings').select('id, title, severity, status, project_id').eq('id', params.findingId).single(),
+      supabase.from('finding_retests').select('*').eq('finding_id', params.findingId).order('created_at', { ascending: false }),
+    ])
+    setFinding(findRes.data as Finding)
+    setRecords((retestRes.data ?? []) as RetestRecord[])
+    setLoading(false)
+  }, [params.findingId])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+
+    const { error: insertErr } = await supabase.from('finding_retests').insert({
+      finding_id: params.findingId,
+      result: form.result,
+      notes: form.notes || null,
+      retested_by: form.retested_by || null,
+      retested_at: new Date().toISOString(),
+    })
+
+    if (!insertErr) {
+      // Update finding status based on result
+      const newStatus = form.result === 'pass' ? 'resolved' : 'in_review'
+      await supabase.from('findings').update({
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      }).eq('id', params.findingId)
+
+      setForm({ result: 'fail', notes: '', retested_by: '' })
+      setShowForm(false)
+      await load()
+    } else {
+      alert('Error al guardar: ' + insertErr.message)
+    }
+    setSaving(false)
+  }
+
+  if (loading) return (
+    <div style={{ padding: 48, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontFamily: 'system-ui' }}>
+      Cargando…
+    </div>
+  )
+
+  if (!finding) return (
+    <div style={{ padding: 48, textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontFamily: 'system-ui' }}>
+      Hallazgo no encontrado.
+    </div>
+  )
+
+  const lastRecord = records[0]
+
+  return (
+    <>
+      <style>{`
+        * { box-sizing: border-box; }
+        .rt-wrap { padding: 24px 28px; max-width: 680px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: #fff; }
+        .rt-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(255,255,255,.4); text-decoration: none; margin-bottom: 20px; transition: color .12s; }
+        .rt-back:hover { color: rgba(255,255,255,.75); }
+        .rt-header { margin-bottom: 24px; }
+        .rt-title { font-size: 20px; font-weight: 800; margin: 0 0 6px; }
+        .rt-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: rgba(255,255,255,.35); }
+        .sev-chip { padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; }
+
+        /* Status card */
+        .rt-status-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }
+        .rt-status-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .rt-status-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.3); margin-bottom: 4px; }
+        .rt-status-value { font-size: 16px; font-weight: 700; }
+        .rt-status-sub { font-size: 11.5px; color: rgba(255,255,255,.3); margin-top: 2px; }
+
+        /* Add button */
+        .btn-add { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; background: rgba(37,99,235,.8); border: 1px solid rgba(59,130,246,.4); color: #fff; font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; font-family: inherit; transition: all .12s; margin-bottom: 20px; }
+        .btn-add:hover { background: rgba(37,99,235,1); }
+
+        /* Form */
+        .rt-form { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 20px; margin-bottom: 20px; }
+        .rt-form-title { font-size: 13px; font-weight: 700; margin: 0 0 16px; color: rgba(255,255,255,.8); }
+        .rt-label { display: block; font-size: 11.5px; font-weight: 600; color: rgba(255,255,255,.35); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; }
+        .rt-field { margin-bottom: 14px; }
+        .result-opts { display: flex; gap: 8px; flex-wrap: wrap; }
+        .result-opt { flex: 1; min-width: 120px; padding: 10px 12px; border-radius: 9px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04); color: rgba(255,255,255,.5); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; text-align: center; transition: all .12s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .result-opt:hover { background: rgba(255,255,255,.07); }
+        .rt-input { width: 100%; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.1); border-radius: 9px; padding: 9px 12px; font-size: 13px; color: #fff; font-family: inherit; outline: none; transition: border-color .12s; }
+        .rt-input:focus { border-color: rgba(59,130,246,.5); }
+        .rt-textarea { width: 100%; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.1); border-radius: 9px; padding: 9px 12px; font-size: 13px; color: #fff; font-family: inherit; outline: none; resize: vertical; transition: border-color .12s; }
+        .rt-textarea:focus { border-color: rgba(59,130,246,.5); }
+        .rt-form-footer { display: flex; gap: 8px; margin-top: 16px; }
+        .btn-save { padding: 9px 18px; background: rgba(37,99,235,.8); border: 1px solid rgba(59,130,246,.4); color: #fff; font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; font-family: inherit; transition: all .12s; }
+        .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-cancel-sm { padding: 9px 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.55); font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; font-family: inherit; transition: all .12s; }
+
+        /* History */
+        .rt-history-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.25); margin-bottom: 10px; }
+        .rt-record { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; }
+        .rt-record-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .rt-record-result { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+        .rt-record-date { font-size: 11.5px; color: rgba(255,255,255,.3); margin-left: auto; }
+        .rt-record-by { font-size: 11.5px; color: rgba(255,255,255,.35); }
+        .rt-record-notes { font-size: 12.5px; color: rgba(255,255,255,.6); margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.06); line-height: 1.5; }
+        .rt-empty { text-align: center; padding: 28px; color: rgba(255,255,255,.25); font-size: 13px; }
+      `}</style>
+
+      <div className="rt-wrap">
+        <Link href={`/projects/${params.id}/findings/${params.findingId}`} className="rt-back">
+          <ArrowLeft size={14} /> Volver al hallazgo
+        </Link>
+
+        <div className="rt-header">
+          <h1 className="rt-title">Retesting</h1>
+          <div className="rt-meta">
+            <span className="sev-chip" style={{ background: `${SEV_COLOR[finding.severity]}20`, color: SEV_COLOR[finding.severity] }}>
+              {finding.severity.toUpperCase()}
+            </span>
+            <span>{finding.title}</span>
+          </div>
+        </div>
+
+        {/* Estado actual */}
+        <div className="rt-status-card">
+          <div className="rt-status-icon" style={{
+            background: lastRecord ? RESULT_CONFIG[lastRecord.result].bg : 'rgba(255,255,255,.06)',
+            border: `1px solid ${lastRecord ? RESULT_CONFIG[lastRecord.result].border : 'rgba(255,255,255,.1)'}`,
+            color: lastRecord ? RESULT_CONFIG[lastRecord.result].color : 'rgba(255,255,255,.3)',
+          }}>
+            {lastRecord ? RESULT_CONFIG[lastRecord.result].icon : <Clock size={16} />}
+          </div>
+          <div>
+            <div className="rt-status-label">Último resultado</div>
+            <div className="rt-status-value" style={{ color: lastRecord ? RESULT_CONFIG[lastRecord.result].color : 'rgba(255,255,255,.4)' }}>
+              {lastRecord ? RESULT_CONFIG[lastRecord.result].label : 'Sin retests registrados'}
+            </div>
+            {lastRecord && (
+              <div className="rt-status-sub">
+                {new Date(lastRecord.retested_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                {lastRecord.retested_by && ` · ${lastRecord.retested_by}`}
+              </div>
+            )}
+          </div>
+          <div style={{ marginLeft: 'auto' }}>
+            <div className="rt-status-label">Total retests</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{records.length}</div>
+          </div>
+        </div>
+
+        {/* Botón nuevo retest */}
+        {!showForm && (
+          <button className="btn-add" onClick={() => setShowForm(true)}>
+            <Plus size={14} /> Registrar nuevo retest
+          </button>
+        )}
+
+        {/* Formulario */}
+        {showForm && (
+          <form className="rt-form" onSubmit={handleSubmit}>
+            <p className="rt-form-title"><RefreshCw size={13} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />Nuevo retest</p>
+
+            <div className="rt-field">
+              <label className="rt-label">Resultado *</label>
+              <div className="result-opts">
+                {(Object.entries(RESULT_CONFIG) as [string, typeof RESULT_CONFIG['pass']][]).map(([key, cfg]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className="result-opt"
+                    style={form.result === key ? { background: cfg.bg, borderColor: cfg.border, color: cfg.color } : {}}
+                    onClick={() => setForm(f => ({ ...f, result: key as 'pass' | 'fail' | 'partial' }))}
+                  >
+                    {cfg.icon} {cfg.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rt-field">
+              <label className="rt-label">Responsable del retest</label>
+              <input
+                className="rt-input"
+                value={form.retested_by}
+                onChange={e => setForm(f => ({ ...f, retested_by: e.target.value }))}
+                placeholder="Ej: Juan Pérez"
+              />
+            </div>
+
+            <div className="rt-field">
+              <label className="rt-label">Notas / Observaciones</label>
+              <textarea
+                className="rt-textarea"
+                rows={3}
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="Descripción del resultado, pasos realizados, evidencia…"
+              />
+            </div>
+
+            <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.3)', marginBottom: 12 }}>
+              {form.result === 'pass'
+                ? '✓ El hallazgo se marcará como Resuelto automáticamente.'
+                : '→ El hallazgo se marcará como En revisión.'}
+            </div>
+
+            <div className="rt-form-footer">
+              <button type="submit" className="btn-save" disabled={saving}>
+                {saving ? 'Guardando…' : 'Guardar retest'}
+              </button>
+              <button type="button" className="btn-cancel-sm" onClick={() => setShowForm(false)}>
+                Cancelar
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Historial */}
+        <div className="rt-history-label">
+          Historial de retests
+        </div>
+        {records.length === 0 ? (
+          <div className="rt-empty">
+            <RefreshCw size={28} style={{ opacity: .2, display: 'block', margin: '0 auto 8px' }} />
+            No hay retests registrados para este hallazgo.
+          </div>
+        ) : records.map(rec => {
+          const cfg = RESULT_CONFIG[rec.result]
+          return (
+            <div key={rec.id} className="rt-record">
+              <div className="rt-record-header">
+                <span className="rt-record-result" style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+                  {cfg.icon} {cfg.label}
+                </span>
+                {rec.retested_by && <span className="rt-record-by">por {rec.retested_by}</span>}
+                <span className="rt-record-date">
+                  {new Date(rec.retested_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              {rec.notes && <div className="rt-record-notes">{rec.notes}</div>}
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
