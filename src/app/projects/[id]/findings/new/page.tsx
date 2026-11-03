@@ -100,9 +100,19 @@ export default function NewFindingPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+
+    // Obtener tenant_id del perfil del usuario autenticado
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('tenant_id')
+      .eq('id', user!.id)
+      .single()
+
     const payload = {
       ...form,
       project_id: params.id,
+      tenant_id: profile?.tenant_id ?? null,
       cvss_score: form.cvss_score ? parseFloat(form.cvss_score) : null,
       cvss_vector: form.cvss_vector || null,
       cwe_id: form.cwe_id || null,
