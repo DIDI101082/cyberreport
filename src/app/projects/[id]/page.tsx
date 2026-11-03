@@ -193,7 +193,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
             </div>
             <div>
               <p className="mod-label">Importar XML</p>
-              <p className="mod-desc">ZAP · Burp Suite</p>
+              <p className="mod-desc">ZAP · Burp · Nessus · Nmap · Qualys</p>
             </div>
           </Link>
           <Link href={`/projects/${params.id}/report`} className="mod-card">
