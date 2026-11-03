@@ -7,7 +7,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Shield, AlertTriangle, CheckCircle2, Clock,
   ExternalLink, Copy, ChevronDown, ChevronUp, Edit2, Save, X,
-  FileText, Target, Zap, Lock,
+  FileText, Target, Zap, Lock, RefreshCw,
 } from 'lucide-react'
 import { getAutoControls } from '@/lib/compliance/frameworks'
 
@@ -242,6 +242,8 @@ export default function FindingDetailPage() {
         .btn-action { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; font-family: inherit; text-decoration: none; transition: all .12s; }
         .btn-edit { background: rgba(255,255,255,.07); color: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.1); }
         .btn-edit:hover { background: rgba(255,255,255,.1); }
+        .btn-retest { background: rgba(16,185,129,.12); color: #34d399; border: 1px solid rgba(16,185,129,.3); }
+        .btn-retest:hover { background: rgba(16,185,129,.2); }
         .btn-compliance { background: rgba(96,165,250,.12); color: #93c5fd; border: 1px solid rgba(96,165,250,.25); }
         .btn-compliance:hover { background: rgba(96,165,250,.18); }
 
@@ -523,6 +525,12 @@ export default function FindingDetailPage() {
             className="btn-action btn-edit"
           >
             <Edit2 size={13} /> Editar hallazgo
+          </Link>
+          <Link
+            href={`/projects/${params.id}/findings/${params.findingId}/retest`}
+            className="btn-action btn-retest"
+          >
+            <RefreshCw size={13} /> Retesting
           </Link>
           <Link href={`/projects/${params.id}/findings`} className="btn-action btn-edit">
             <ArrowLeft size={13} /> Volver a hallazgos
