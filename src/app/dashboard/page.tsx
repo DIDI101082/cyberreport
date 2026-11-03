@@ -93,9 +93,9 @@ export default async function DashboardPage() {
   ;(allFindings ?? []).forEach(f => {
     const controls = getAutoControls(f.cwe_id ?? undefined, f.category ?? undefined)
     controls.forEach(c => {
-      if (c.framework === 'iso27001') coveredIso.add(c.id)
-      else if (c.framework === 'pci_dss') coveredPci.add(c.id)
-      else if (c.framework === 'nist_csf') coveredNist.add(c.id)
+      if (c.framework === 'iso27001') coveredIso.add(c.control.id)
+      else if (c.framework === 'pci_dss') coveredPci.add(c.control.id)
+      else if (c.framework === 'nist_csf') coveredNist.add(c.control.id)
     })
   })
 
