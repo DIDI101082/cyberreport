@@ -5,6 +5,7 @@ import {
   ArrowRight, Flame, Activity, Lock,
   ChevronRight, BarChart2, Zap, FolderOpen, Code2, FileText, Globe, TrendingDown
 } from 'lucide-react'
+import { getAutoControls } from '@/lib/compliance/frameworks'
 
 const SEVERITY_DOT: Record<string, string> = {
   critical: '#ef4444',
@@ -72,7 +73,7 @@ export default async function DashboardPage() {
 
   const { data: allFindings } = await supabase
     .from('findings')
-    .select('severity, status')
+    .select('severity, status, cwe_id, category')
 
   const total = allFindings?.length ?? 0
   const critical = allFindings?.filter(f => f.severity === 'critical').length ?? 0
@@ -82,6 +83,32 @@ export default async function DashboardPage() {
 
   const penalty = (critical * 20 + high * 10) / Math.max(total, 1) * 10
   const globalScore = Math.max(0, Math.round(100 - Math.min(penalty, 100)))
+
+  // ── Framework coverage (real) ──────────────────────────────────────────────
+  // Count unique controls covered by all findings per framework
+  const coveredIso = new Set<string>()
+  const coveredPci = new Set<string>()
+  const coveredNist = new Set<string>()
+
+  ;(allFindings ?? []).forEach(f => {
+    const controls = getAutoControls(f.cwe_id ?? undefined, f.category ?? undefined)
+    controls.forEach(c => {
+      if (c.framework === 'iso27001') coveredIso.add(c.id)
+      else if (c.framework === 'pci_dss') coveredPci.add(c.id)
+      else if (c.framework === 'nist_csf') coveredNist.add(c.id)
+    })
+  })
+
+  // Total controls per framework (from the mapping file)
+  const ISO_TOTAL  = 17
+  const PCI_TOTAL  = 12
+  const NIST_TOTAL = 12
+
+  const fwCoverage = [
+    { name: 'ISO 27001',     pct: Math.round((coveredIso.size  / ISO_TOTAL)  * 100), color: '#60a5fa' },
+    { name: 'PCI-DSS v4.0', pct: Math.round((coveredPci.size  / PCI_TOTAL)  * 100), color: '#f97316' },
+    { name: 'NIST CSF 2.0', pct: Math.round((coveredNist.size / NIST_TOTAL) * 100), color: '#a78bfa' },
+  ]
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
@@ -434,7 +461,7 @@ export default async function DashboardPage() {
         .fw-fill {
           height: 100%;
           border-radius: 99px;
-          background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+          transition: width 0.4s ease;
         }
         .right-col { display: flex; flex-direction: column; gap: 14px; }
       `}</style>
@@ -644,22 +671,24 @@ export default async function DashboardPage() {
                   <Lock size={12} />
                   Cobertura de frameworks
                 </div>
-                {[
-                  { name: 'OWASP Top 10',  pct: 82 },
-                  { name: 'ISO 27001',     pct: 67 },
-                  { name: 'PCI-DSS v4.0', pct: 54 },
-                  { name: 'NIST CSF 2.0', pct: 71 },
-                ].map(fw => (
+                {fwCoverage.map(fw => (
                   <div key={fw.name} className="fw-item">
                     <div className="fw-labels">
                       <span>{fw.name}</span>
-                      <span>{fw.pct}%</span>
+                      <span style={{ color: fw.pct > 0 ? fw.color : 'rgba(255,255,255,0.25)' }}>
+                        {fw.pct}%
+                      </span>
                     </div>
                     <div className="fw-track">
-                      <div className="fw-fill" style={{ width: `${fw.pct}%` }} />
+                      <div className="fw-fill" style={{ width: `${fw.pct}%`, background: fw.color }} />
                     </div>
                   </div>
                 ))}
+                {total === 0 && (
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', margin: '8px 0 0', textAlign: 'center' }}>
+                    Sin hallazgos registrados aún
+                  </p>
+                )}
               </div>
             </div>
           </div>
