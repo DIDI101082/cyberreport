@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import { ShieldCheck, AlertTriangle, AlertCircle, Info, CheckCircle2, Globe } from 'lucide-react'
+import { ShieldCheck, AlertTriangle, AlertCircle, Info, CheckCircle2, Globe, User, Calendar } from 'lucide-react'
 import type { SeverityLevel } from '@/types'
 
 const SEV_COLORS: Record<string, string> = {
@@ -8,6 +8,14 @@ const SEV_COLORS: Record<string, string> = {
 }
 const SEV_LABELS: Record<string, string> = {
   critical: 'Crítico', high: 'Alto', medium: 'Medio', low: 'Bajo', info: 'Info',
+}
+const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
+  open:        { label: 'Abierto',     color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+  in_progress: { label: 'En progreso', color: '#fb923c', bg: 'rgba(251,146,60,0.12)'  },
+  in_review:   { label: 'En revisión', color: '#facc15', bg: 'rgba(250,204,21,0.12)'  },
+  resolved:    { label: 'Resuelto',    color: '#4ade80', bg: 'rgba(74,222,128,0.12)'  },
+  mitigated:   { label: 'Mitigado',    color: '#34d399', bg: 'rgba(52,211,153,0.12)'  },
+  accepted:    { label: 'Aceptado',    color: 'rgba(255,255,255,0.4)', bg: 'rgba(255,255,255,0.07)' },
 }
 
 export default async function ClientPortalView({ params }: { params: { token: string } }) {
@@ -51,7 +59,7 @@ export default async function ClientPortalView({ params }: { params: { token: st
   // Hallazgos (sin detalle técnico para cliente)
   const { data: findings } = await supabase
     .from('findings')
-    .select('id, title, severity, category, status, description, recommendation')
+    .select('id, title, severity, category, status, description, recommendation, assigned_to, due_date')
     .eq('project_id', project.id)
     .not('status', 'in', '("false_positive")')
     .order('severity', { ascending: false })
@@ -94,13 +102,18 @@ export default async function ClientPortalView({ params }: { params: { token: st
         .findings-section { margin-bottom: 24px; }
         .section-lbl { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.35); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; }
         .finding-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 11px; padding: 16px 18px; margin-bottom: 8px; }
-        .finding-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .finding-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
         .sev-pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 99px; letter-spacing: .03em; }
-        .finding-title { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.88); }
+        .finding-title { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.88); margin-bottom: 8px; }
         .finding-desc { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.6; margin-bottom: 10px; }
         .rec-box { background: rgba(37,99,235,0.08); border: 1px solid rgba(59,130,246,0.15); border-radius: 8px; padding: 10px 14px; }
         .rec-lbl { font-size: 11px; font-weight: 600; color: #60a5fa; margin-bottom: 4px; }
         .rec-text { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5; }
+        .status-badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 99px; display: inline-flex; align-items: center; gap: 4px; }
+        .meta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+        .meta-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: rgba(255,255,255,0.4); }
+        .meta-item svg { flex-shrink: 0; opacity: .6; }
+        .meta-val { color: rgba(255,255,255,0.65); font-weight: 500; }
         .cl-footer { text-align: center; padding: 24px 0; border-top: 1px solid rgba(255,255,255,0.06); margin-top: 36px; }
         .cl-footer-text { font-size: 12px; color: rgba(255,255,255,0.25); }
         .readonly-banner { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); border-radius: 10px; padding: 10px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.5); }
@@ -178,33 +191,62 @@ export default async function ClientPortalView({ params }: { params: { token: st
           return (
             <div key={s} className="findings-section">
               <p className="section-lbl">{SEV_LABELS[s]} ({group.length})</p>
-              {group.map(f => (
-                <div key={f.id} className="finding-card">
-                  <div className="finding-head">
-                    <span
-                      className="sev-pill"
-                      style={{ background: `${SEV_COLORS[s]}22`, color: SEV_COLORS[s], border: `1px solid ${SEV_COLORS[s]}44` }}
-                    >
-                      {SEV_LABELS[s]}
-                    </span>
-                    {f.status === 'resolved' || f.status === 'mitigated' ? (
-                      <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <CheckCircle2 size={12} /> Resuelto
+              {group.map(f => {
+                const statusCfg = STATUS_CFG[f.status] ?? { label: f.status, color: 'rgba(255,255,255,0.4)', bg: 'rgba(255,255,255,0.07)' }
+                const isOverdue = f.due_date && new Date(f.due_date) < new Date() && f.status !== 'resolved' && f.status !== 'mitigated'
+                return (
+                  <div key={f.id} className="finding-card">
+                    <div className="finding-head">
+                      <span
+                        className="sev-pill"
+                        style={{ background: `${SEV_COLORS[s]}22`, color: SEV_COLORS[s], border: `1px solid ${SEV_COLORS[s]}44` }}
+                      >
+                        {SEV_LABELS[s]}
                       </span>
-                    ) : null}
-                  </div>
-                  <p className="finding-title">{f.title}</p>
-                  {f.description && (
-                    <p className="finding-desc">{f.description.length > 300 ? f.description.slice(0, 300) + '…' : f.description}</p>
-                  )}
-                  {f.recommendation && (
-                    <div className="rec-box">
-                      <p className="rec-lbl">Recomendación</p>
-                      <p className="rec-text">{f.recommendation.length > 250 ? f.recommendation.slice(0, 250) + '…' : f.recommendation}</p>
+                      <span
+                        className="status-badge"
+                        style={{ background: statusCfg.bg, color: statusCfg.color, border: `1px solid ${statusCfg.color}44` }}
+                      >
+                        {(f.status === 'resolved' || f.status === 'mitigated') && <CheckCircle2 size={11} />}
+                        {statusCfg.label}
+                      </span>
                     </div>
-                  )}
-                </div>
-              ))}
+                    <p className="finding-title">{f.title}</p>
+
+                    {(f.assigned_to || f.due_date) && (
+                      <div className="meta-row">
+                        {f.assigned_to && (
+                          <div className="meta-item">
+                            <User size={12} />
+                            <span>Responsable:</span>
+                            <span className="meta-val">{f.assigned_to}</span>
+                          </div>
+                        )}
+                        {f.due_date && (
+                          <div className="meta-item">
+                            <Calendar size={12} />
+                            <span>Vencimiento:</span>
+                            <span className="meta-val" style={{ color: isOverdue ? '#f87171' : 'rgba(255,255,255,0.65)' }}>
+                              {new Date(f.due_date).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              {isOverdue && ' ⚠ Vencido'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {f.description && (
+                      <p className="finding-desc">{f.description.length > 300 ? f.description.slice(0, 300) + '…' : f.description}</p>
+                    )}
+                    {f.recommendation && (
+                      <div className="rec-box">
+                        <p className="rec-lbl">Recomendación</p>
+                        <p className="rec-text">{f.recommendation.length > 250 ? f.recommendation.slice(0, 250) + '…' : f.recommendation}</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )
         })}
