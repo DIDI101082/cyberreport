@@ -5,536 +5,290 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
-  ArrowLeft, Shield, AlertTriangle, CheckCircle2, Clock,
-  ExternalLink, Copy, ChevronDown, ChevronUp, Edit2, Save, X,
-  FileText, Target, Zap, Lock, RefreshCw,
+  ArrowLeft, RefreshCw, CheckCircle2, XCircle, AlertTriangle,
+  Clock, User, FileText, Plus,
 } from 'lucide-react'
-import { getAutoControls } from '@/lib/compliance/frameworks'
 
-// ── Types ────────────────────────────────────────────────────────────────────
+interface Retest {
+  id: string
+  finding_id: string
+  result: 'pass' | 'fail' | 'partial'
+  notes: string | null
+  retested_by: string | null
+  retested_at: string
+}
+
 interface Finding {
   id: string
   title: string
   severity: string
   status: string
-  category: string | null
-  cvss_score: number | null
-  cvss_vector: string | null
-  cve_id: string | null
-  cwe_id: string | null
-  description: string | null
-  impact: string | null
-  recommendation: string | null
-  evidence: string | null
-  affected_components: string | null
-  created_at: string
-  updated_at: string | null
   project_id: string
 }
 
-interface Project {
-  id: string
-  name: string
+const RESULT_CFG = {
+  pass:    { label: 'Verificado — Resuelto', color: '#4ade80', bg: 'rgba(74,222,128,.12)', border: 'rgba(74,222,128,.3)',  icon: <CheckCircle2 size={14} /> },
+  fail:    { label: 'Falla — Persiste',      color: '#f87171', bg: 'rgba(248,113,113,.12)', border: 'rgba(248,113,113,.3)', icon: <XCircle size={14} /> },
+  partial: { label: 'Parcialmente resuelto', color: '#facc15', bg: 'rgba(250,204,21,.12)', border: 'rgba(250,204,21,.3)',  icon: <AlertTriangle size={14} /> },
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const SEV_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  critical: { label: 'Crítico',  color: '#fca5a5', bg: 'rgba(239,68,68,0.15)',   border: 'rgba(239,68,68,0.4)' },
-  high:     { label: 'Alto',     color: '#fdba74', bg: 'rgba(249,115,22,0.15)',  border: 'rgba(249,115,22,0.4)' },
-  medium:   { label: 'Medio',    color: '#fde047', bg: 'rgba(234,179,8,0.15)',   border: 'rgba(234,179,8,0.4)' },
-  low:      { label: 'Bajo',     color: '#93c5fd', bg: 'rgba(96,165,250,0.15)',  border: 'rgba(96,165,250,0.4)' },
-  info:     { label: 'Info',     color: 'rgba(255,255,255,0.5)', bg: 'rgba(255,255,255,0.06)', border: 'rgba(255,255,255,0.15)' },
+const STATUS_MAP: Record<string, string> = {
+  pass:    'resolved',
+  fail:    'open',
+  partial: 'in_review',
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-  open:           { label: 'Abierto',         color: '#f87171', bg: 'rgba(248,113,113,0.12)', icon: <AlertTriangle size={12} /> },
-  in_review:      { label: 'En revisión',     color: '#facc15', bg: 'rgba(250,204,21,0.12)',  icon: <Clock size={12} /> },
-  resolved:       { label: 'Resuelto',        color: '#4ade80', bg: 'rgba(74,222,128,0.12)',  icon: <CheckCircle2 size={12} /> },
-  accepted:       { label: 'Aceptado',        color: 'rgba(255,255,255,0.4)', bg: 'rgba(255,255,255,0.06)', icon: <Shield size={12} /> },
-  false_positive: { label: 'Falso positivo',  color: '#9ca3af', bg: 'rgba(156,163,175,0.1)', icon: <X size={12} /> },
+const SEV_COLORS: Record<string, string> = {
+  critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#60a5fa', info: 'rgba(255,255,255,.4)',
 }
 
-const CAT_LABELS: Record<string, string> = {
-  web: 'Web (OWASP)', infrastructure: 'Infraestructura', network: 'Red',
-  social: 'Ingeniería Social', physical: 'Físico', other: 'Otro',
-}
-
-const FW_COLORS: Record<string, string> = {
-  iso27001: '#60a5fa',
-  pci_dss:  '#f97316',
-  nist_csf: '#a78bfa',
-}
-
-const FW_NAMES: Record<string, string> = {
-  iso27001: 'ISO 27001',
-  pci_dss:  'PCI DSS',
-  nist_csf: 'NIST CSF',
-}
-
-function cvssColor(score: number | null): string {
-  if (score == null) return 'rgba(255,255,255,0.3)'
-  if (score >= 9)   return '#ef4444'
-  if (score >= 7)   return '#f97316'
-  if (score >= 4)   return '#eab308'
-  return '#60a5fa'
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
-export default function FindingDetailPage() {
-  const params = useParams<{ id: string; findingId: string }>()
-  const router = useRouter()
+export default function RetestPage() {
+  const params   = useParams<{ id: string; findingId: string }>()
   const supabase = createClient()
 
-  const [finding, setFinding] = useState<Finding | null>(null)
-  const [project, setProject] = useState<Project | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [editingStatus, setEditingStatus] = useState(false)
-  const [copied, setCopied] = useState<string | null>(null)
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    description: true, evidence: true, remediation: true, compliance: true,
-  })
+  const [finding,      setFinding]      = useState<Finding | null>(null)
+  const [retests,      setRetests]      = useState<Retest[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [saving,       setSaving]       = useState(false)
+  const [success,      setSuccess]      = useState(false)
+  const [result,       setResult]       = useState<'pass'|'fail'|'partial'>('fail')
+  const [notes,        setNotes]        = useState('')
+  const [retestedBy,   setRetestedBy]   = useState('')
+  const [updateStatus, setUpdateStatus] = useState(true)
 
   const load = useCallback(async () => {
-    const [projRes, findRes] = await Promise.all([
-      supabase.from('projects').select('id, name').eq('id', params.id).single(),
-      supabase.from('findings').select('*').eq('id', params.findingId).single(),
+    const [fRes, rRes] = await Promise.all([
+      supabase.from('findings').select('id, title, severity, status, project_id').eq('id', params.findingId).single(),
+      supabase.from('finding_retests').select('*').eq('finding_id', params.findingId).order('retested_at', { ascending: false }),
     ])
-    setProject(projRes.data as Project)
-    setFinding(findRes.data as Finding)
+    setFinding(fRes.data as Finding)
+    setRetests((rRes.data ?? []) as Retest[])
     setLoading(false)
-  }, [params.id, params.findingId])
+  }, [params.findingId])
 
   useEffect(() => { load() }, [load])
 
-  async function updateStatus(newStatus: string) {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
     if (!finding) return
     setSaving(true)
-    const { error } = await supabase
-      .from('findings')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', finding.id)
+
+    const { error } = await supabase.from('finding_retests').insert({
+      finding_id:  finding.id,
+      result,
+      notes:       notes.trim() || null,
+      retested_by: retestedBy.trim() || null,
+    })
+
+    if (!error && updateStatus) {
+      await supabase.from('findings').update({
+        status:     STATUS_MAP[result],
+        updated_at: new Date().toISOString(),
+      }).eq('id', finding.id)
+      setFinding(f => f ? { ...f, status: STATUS_MAP[result] } : f)
+    }
+
     if (!error) {
-      setFinding(f => f ? { ...f, status: newStatus } : f)
+      const { data } = await supabase.from('finding_retests').select('*').eq('finding_id', params.findingId).order('retested_at', { ascending: false })
+      setRetests((data ?? []) as Retest[])
+      setNotes('')
+      setRetestedBy('')
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
     }
     setSaving(false)
-    setEditingStatus(false)
-  }
-
-  function copyToClipboard(text: string, key: string) {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(key)
-      setTimeout(() => setCopied(null), 1500)
-    })
-  }
-
-  function toggleSection(key: string) {
-    setExpandedSections(s => ({ ...s, [key]: !s[key] }))
   }
 
   if (loading) return (
-    <div style={{ padding: 48, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontFamily: 'system-ui' }}>
-      Cargando hallazgo…
-    </div>
+    <div style={{ padding: 48, textAlign: 'center', color: 'rgba(255,255,255,.3)', fontFamily: 'system-ui' }}>Cargando…</div>
   )
-
   if (!finding) return (
-    <div style={{ padding: 48, textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontFamily: 'system-ui' }}>
-      Hallazgo no encontrado.{' '}
-      <Link href={`/projects/${params.id}/findings`} style={{ color: '#60a5fa' }}>Volver a hallazgos</Link>
+    <div style={{ padding: 48, textAlign: 'center', color: 'rgba(255,255,255,.4)', fontFamily: 'system-ui' }}>
+      Hallazgo no encontrado. <Link href={`/projects/${params.id}/findings`} style={{ color: '#60a5fa' }}>Volver</Link>
     </div>
   )
-
-  const sev     = SEV_CONFIG[finding.severity]    ?? SEV_CONFIG.info
-  const status  = STATUS_CONFIG[finding.status]   ?? STATUS_CONFIG.open
-  const controls = getAutoControls(finding.cwe_id, finding.category ?? 'other')
-
-  // Group controls by framework
-  const byFw = controls.reduce<Record<string, typeof controls>>((acc, c) => {
-    if (!acc[c.framework]) acc[c.framework] = []
-    acc[c.framework].push(c)
-    return acc
-  }, {})
-
-  const affectedList = finding.affected_components
-    ? finding.affected_components.split('\n').map(s => s.trim()).filter(Boolean)
-    : []
-
-  const evidenceList = finding.evidence
-    ? finding.evidence.split('\n').map(s => s.trim()).filter(Boolean)
-    : []
 
   return (
     <>
       <style>{`
-        * { box-sizing: border-box; }
-        .fd-wrap { padding: 24px 28px; max-width: 860px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: #fff; }
+        .rt { padding: 24px 28px; max-width: 720px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: #fff; }
+        .back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(255,255,255,.4); text-decoration: none; margin-bottom: 18px; transition: color .12s; }
+        .back:hover { color: rgba(255,255,255,.8); }
+        .rt-title { font-size: 20px; font-weight: 800; margin: 0 0 4px; }
+        .rt-sub { font-size: 12px; color: rgba(255,255,255,.3); margin: 0 0 24px; }
 
-        /* Nav */
-        .fd-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(255,255,255,0.4); text-decoration: none; margin-bottom: 20px; transition: color .12s; }
-        .fd-back:hover { color: rgba(255,255,255,.75); }
-        .fd-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,.3); margin-bottom: 20px; flex-wrap: wrap; }
-        .fd-breadcrumb a { color: rgba(255,255,255,.4); text-decoration: none; }
-        .fd-breadcrumb a:hover { color: rgba(255,255,255,.7); }
-        .fd-breadcrumb .sep { color: rgba(255,255,255,.15); }
+        .finding-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; margin-bottom: 24px; max-width: 100%; }
+        .finding-pill-sev { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+        .finding-pill-title { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* Header */
-        .fd-header { margin-bottom: 24px; }
-        .fd-badges { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-        .sev-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; }
-        .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity .12s; }
-        .status-badge:hover { opacity: .8; }
-        .cat-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; background: rgba(255,255,255,.07); color: rgba(255,255,255,.45); }
-        .fd-title { font-size: 22px; font-weight: 800; margin: 0 0 8px; line-height: 1.3; }
-        .fd-meta { display: flex; gap: 14px; flex-wrap: wrap; }
-        .fd-meta-item { font-size: 11.5px; color: rgba(255,255,255,.35); display: flex; align-items: center; gap: 4px; }
+        .form-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 22px; margin-bottom: 24px; }
+        .form-title { font-size: 14px; font-weight: 700; margin: 0 0 18px; color: rgba(255,255,255,.85); display: flex; align-items: center; gap: 8px; }
+        .field { margin-bottom: 16px; }
+        .field-label { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.45); margin-bottom: 7px; }
 
-        /* Status dropdown */
-        .status-dropdown { position: relative; display: inline-block; }
-        .status-menu { position: absolute; top: calc(100% + 6px); left: 0; background: #0f1c30; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 5px; z-index: 50; min-width: 170px; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
-        .status-opt { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 7px; font-size: 12px; cursor: pointer; transition: background .1s; color: rgba(255,255,255,.75); }
-        .status-opt:hover { background: rgba(255,255,255,.06); }
-        .status-opt.active { background: rgba(255,255,255,.05); font-weight: 600; }
+        .result-opts { display: flex; gap: 8px; flex-wrap: wrap; }
+        .result-opt { flex: 1; min-width: 130px; padding: 12px 14px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04); cursor: pointer; transition: all .12s; display: flex; align-items: center; gap: 9px; font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.45); }
+        .result-opt.selected { color: var(--rc); border-color: var(--rb); background: var(--rbg); }
+        .result-opt:hover:not(.selected) { background: rgba(255,255,255,.07); }
 
-        /* Score row */
-        .fd-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 24px; }
-        .score-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 12px; padding: 14px 16px; }
-        .score-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.3); margin-bottom: 6px; }
-        .score-value { font-size: 20px; font-weight: 800; font-family: monospace; }
-        .score-sub { font-size: 10px; color: rgba(255,255,255,.25); margin-top: 2px; word-break: break-all; }
+        .rt-input { width: 100%; padding: 10px 14px; border-radius: 9px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.06); color: #fff; font-size: 13px; font-family: inherit; outline: none; transition: border-color .12s; box-sizing: border-box; }
+        .rt-input::placeholder { color: rgba(255,255,255,.25); }
+        .rt-input:focus { border-color: rgba(96,165,250,.5); }
+        textarea.rt-input { resize: vertical; min-height: 90px; line-height: 1.6; }
 
-        /* Sections */
-        .fd-section { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
-        .fd-section-hdr { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; transition: background .1s; }
-        .fd-section-hdr:hover { background: rgba(255,255,255,.02); }
-        .fd-section-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: rgba(255,255,255,.85); }
-        .fd-section-body { padding: 0 18px 18px; }
-        .fd-text { font-size: 13.5px; color: rgba(255,255,255,.7); line-height: 1.7; white-space: pre-wrap; }
-        .fd-divider { height: 1px; background: rgba(255,255,255,.06); margin: 0; }
+        .check-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 9px; cursor: pointer; }
+        .check-box { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: rgba(255,255,255,.04); transition: all .1s; }
+        .check-box.on { background: rgba(37,99,235,.8); border-color: #3b82f6; }
+        .check-text { font-size: 13px; color: rgba(255,255,255,.65); }
 
-        /* Evidence list */
-        .evidence-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,.04); border-radius: 8px; margin-bottom: 6px; font-size: 12.5px; font-family: monospace; color: rgba(255,255,255,.65); word-break: break-all; }
-        .evidence-copy { background: none; border: none; color: rgba(255,255,255,.25); cursor: pointer; padding: 0; transition: color .1s; flex-shrink: 0; margin-left: auto; }
-        .evidence-copy:hover { color: rgba(255,255,255,.6); }
-        .evidence-copy.ok { color: #4ade80; }
+        .submit-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border-radius: 10px; background: rgba(16,185,129,.8); border: 1px solid rgba(16,185,129,.3); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .12s; margin-top: 4px; font-family: inherit; }
+        .submit-btn:hover:not(:disabled) { background: rgba(16,185,129,1); }
+        .submit-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-        /* Affected components */
-        .affected-item { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 6px; font-size: 12px; font-family: monospace; color: rgba(255,255,255,.6); margin: 0 5px 5px 0; }
+        .success-banner { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: rgba(74,222,128,.1); border: 1px solid rgba(74,222,128,.25); border-radius: 10px; font-size: 13px; color: #4ade80; margin-bottom: 16px; }
 
-        /* Identifiers */
-        .id-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-        .id-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 7px; font-size: 12px; font-family: monospace; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.05); color: rgba(255,255,255,.7); }
-        .id-chip a { color: #60a5fa; text-decoration: none; }
-        .id-chip a:hover { color: #93c5fd; }
-
-        /* Compliance controls */
-        .fw-block { margin-bottom: 14px; }
-        .fw-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
-        .ctrl-item { display: flex; gap: 12px; padding: 10px 12px; background: rgba(255,255,255,.03); border-radius: 9px; margin-bottom: 6px; border-left: 3px solid; }
-        .ctrl-id { font-size: 11px; font-weight: 700; font-family: monospace; white-space: nowrap; min-width: 56px; }
-        .ctrl-info { flex: 1; }
-        .ctrl-title { font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.8); margin-bottom: 2px; }
-        .ctrl-desc { font-size: 11.5px; color: rgba(255,255,255,.4); line-height: 1.5; }
-        .no-controls { font-size: 12.5px; color: rgba(255,255,255,.3); padding: 12px 0; }
-
-        /* Actions */
-        .fd-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
-        .btn-action { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; font-family: inherit; text-decoration: none; transition: all .12s; }
-        .btn-edit { background: rgba(255,255,255,.07); color: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.1); }
-        .btn-edit:hover { background: rgba(255,255,255,.1); }
-        .btn-retest { background: rgba(16,185,129,.12); color: #34d399; border: 1px solid rgba(16,185,129,.3); }
-        .btn-retest:hover { background: rgba(16,185,129,.2); }
-        .btn-compliance { background: rgba(96,165,250,.12); color: #93c5fd; border: 1px solid rgba(96,165,250,.25); }
-        .btn-compliance:hover { background: rgba(96,165,250,.18); }
-
-        /* Empty state */
-        .fd-empty-section { font-size: 12.5px; color: rgba(255,255,255,.25); font-style: italic; padding: 4px 0; }
-
-        @keyframes spin { to { transform: rotate(360deg) } }
+        .hist-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.3); margin: 0 0 12px; display: flex; align-items: center; gap: 6px; }
+        .hist-empty { font-size: 13px; color: rgba(255,255,255,.25); font-style: italic; padding: 16px 0; }
+        .hist-item { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 11px; padding: 14px 16px; margin-bottom: 8px; border-left: 3px solid; }
+        .hist-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+        .hist-result { font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+        .hist-date { font-size: 11px; color: rgba(255,255,255,.3); margin-left: auto; }
+        .hist-by { font-size: 11px; color: rgba(255,255,255,.35); display: flex; align-items: center; gap: 4px; }
+        .hist-notes { font-size: 12.5px; color: rgba(255,255,255,.55); line-height: 1.5; margin-top: 8px; white-space: pre-wrap; }
       `}</style>
 
-      <div className="fd-wrap">
-        {/* Breadcrumb */}
-        <nav className="fd-breadcrumb">
-          <Link href={`/projects/${params.id}`}>{project?.name ?? 'Proyecto'}</Link>
-          <span className="sep">/</span>
-          <Link href={`/projects/${params.id}/findings`}>Hallazgos</Link>
-          <span className="sep">/</span>
-          <span style={{ color: 'rgba(255,255,255,.6)' }}>{finding.title}</span>
-        </nav>
+      <div className="rt">
+        <Link href={`/projects/${params.id}/findings/${params.findingId}`} className="back">
+          <ArrowLeft size={14} /> Volver al hallazgo
+        </Link>
 
-        {/* Header */}
-        <div className="fd-header">
-          <div className="fd-badges">
-            {/* Severity */}
-            <span className="sev-badge" style={{ background: sev.bg, color: sev.color, border: `1px solid ${sev.border}` }}>
-              <AlertTriangle size={11} /> {sev.label}
-            </span>
+        <h1 className="rt-title">Retesting</h1>
+        <p className="rt-sub">Registrá el resultado de la verificación del hallazgo</p>
 
-            {/* Status (clickable dropdown) */}
-            <div className="status-dropdown">
-              <button
-                className="status-badge"
-                style={{ background: status.bg, color: status.color, border: `1px solid ${status.color}33` }}
-                onClick={() => setEditingStatus(v => !v)}
-              >
-                {status.icon} {status.label} <ChevronDown size={11} />
-              </button>
-              {editingStatus && (
-                <div className="status-menu">
-                  {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                    <div
-                      key={key}
-                      className={`status-opt${finding.status === key ? ' active' : ''}`}
-                      onClick={() => updateStatus(key)}
-                    >
-                      <span style={{ color: cfg.color }}>{cfg.icon}</span>
-                      {cfg.label}
-                      {saving && finding.status !== key && <span style={{ fontSize: 10, opacity: .4 }}>…</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {finding.category && (
-              <span className="cat-badge">{CAT_LABELS[finding.category] ?? finding.category}</span>
-            )}
-          </div>
-
-          <h1 className="fd-title">{finding.title}</h1>
-
-          <div className="fd-meta">
-            <span className="fd-meta-item">
-              <Clock size={11} />
-              Creado {new Date(finding.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
-            </span>
-            {finding.updated_at && (
-              <span className="fd-meta-item">
-                <Save size={11} />
-                Actualizado {new Date(finding.updated_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </span>
-            )}
-          </div>
+        <div className="finding-pill">
+          <span
+            className="finding-pill-sev"
+            style={{ background: `${SEV_COLORS[finding.severity] ?? '#6b7280'}22`, color: SEV_COLORS[finding.severity] ?? '#6b7280' }}
+          >
+            {finding.severity}
+          </span>
+          <span className="finding-pill-title">{finding.title}</span>
         </div>
 
-        {/* Score row */}
-        <div className="fd-scores">
-          {/* CVSS Score */}
-          <div className="score-card">
-            <div className="score-label">CVSS Score</div>
-            <div className="score-value" style={{ color: cvssColor(finding.cvss_score) }}>
-              {finding.cvss_score != null ? finding.cvss_score.toFixed(1) : '—'}
-            </div>
-            {finding.cvss_vector && (
-              <div className="score-sub">{finding.cvss_vector}</div>
-            )}
-          </div>
-
-          {/* CVE */}
-          {finding.cve_id && (
-            <div className="score-card">
-              <div className="score-label">CVE</div>
-              <div className="score-value" style={{ fontSize: 14, color: '#93c5fd' }}>{finding.cve_id}</div>
-              <div className="score-sub">
-                <a href={`https://nvd.nist.gov/vuln/detail/${finding.cve_id}`} target="_blank" rel="noopener noreferrer"
-                  style={{ color: '#60a5fa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  NVD <ExternalLink size={9} />
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* CWE */}
-          {finding.cwe_id && (
-            <div className="score-card">
-              <div className="score-label">CWE</div>
-              <div className="score-value" style={{ fontSize: 14, color: '#c084fc' }}>{finding.cwe_id}</div>
-              <div className="score-sub">
-                <a href={`https://cwe.mitre.org/data/definitions/${finding.cwe_id.replace(/\D/g,'')}.html`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{ color: '#a78bfa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  MITRE <ExternalLink size={9} />
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* Controls count */}
-          <div className="score-card">
-            <div className="score-label">Controles</div>
-            <div className="score-value" style={{ color: controls.length > 0 ? '#4ade80' : 'rgba(255,255,255,.3)' }}>
-              {controls.length}
-            </div>
-            <div className="score-sub">{controls.length > 0 ? 'marcos normativos' : 'sin mapeo'}</div>
-          </div>
-        </div>
-
-        {/* Affected components */}
-        {affectedList.length > 0 && (
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: 'rgba(255,255,255,.3)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Target size={11} /> Componentes afectados
-            </div>
-            <div>
-              {affectedList.map((comp, i) => (
-                <span key={i} className="affected-item">
-                  <Target size={10} style={{ opacity: .4 }} /> {comp}
-                </span>
-              ))}
-            </div>
+        {success && (
+          <div className="success-banner">
+            <CheckCircle2 size={15} /> Retest registrado correctamente
           </div>
         )}
 
-        {/* Section: Descripción técnica */}
-        <div className="fd-section">
-          <div className="fd-section-hdr" onClick={() => toggleSection('description')}>
-            <div className="fd-section-title">
-              <FileText size={14} color="rgba(255,255,255,.5)" /> Descripción técnica e impacto
-            </div>
-            {expandedSections.description ? <ChevronUp size={14} color="rgba(255,255,255,.3)" /> : <ChevronDown size={14} color="rgba(255,255,255,.3)" />}
-          </div>
-          {expandedSections.description && (
-            <div className="fd-section-body">
-              {finding.description ? (
-                <p className="fd-text">{finding.description}</p>
-              ) : (
-                <p className="fd-empty-section">Sin descripción técnica registrada.</p>
-              )}
-              {finding.impact && (
-                <>
-                  <div style={{ height: 1, background: 'rgba(255,255,255,.06)', margin: '14px 0' }} />
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: 'rgba(255,255,255,.3)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <Zap size={11} /> Impacto
-                  </div>
-                  <p className="fd-text">{finding.impact}</p>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Section: Evidencia */}
-        <div className="fd-section">
-          <div className="fd-section-hdr" onClick={() => toggleSection('evidence')}>
-            <div className="fd-section-title">
-              <Shield size={14} color="rgba(255,255,255,.5)" /> Evidencia
-            </div>
-            {expandedSections.evidence ? <ChevronUp size={14} color="rgba(255,255,255,.3)" /> : <ChevronDown size={14} color="rgba(255,255,255,.3)" />}
-          </div>
-          {expandedSections.evidence && (
-            <div className="fd-section-body">
-              {evidenceList.length === 0 ? (
-                <p className="fd-empty-section">Sin evidencia registrada.</p>
-              ) : (
-                evidenceList.map((ev, i) => (
-                  <div key={i} className="evidence-item">
-                    <span style={{ flex: 1 }}>{ev}</span>
-                    <button
-                      className={`evidence-copy${copied === `ev-${i}` ? ' ok' : ''}`}
-                      onClick={() => copyToClipboard(ev, `ev-${i}`)}
-                      title="Copiar"
-                    >
-                      <Copy size={12} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Section: Remediación */}
-        <div className="fd-section">
-          <div className="fd-section-hdr" onClick={() => toggleSection('remediation')}>
-            <div className="fd-section-title">
-              <CheckCircle2 size={14} color="rgba(255,255,255,.5)" /> Remediación recomendada
-            </div>
-            {expandedSections.remediation ? <ChevronUp size={14} color="rgba(255,255,255,.3)" /> : <ChevronDown size={14} color="rgba(255,255,255,.3)" />}
-          </div>
-          {expandedSections.remediation && (
-            <div className="fd-section-body">
-              {finding.recommendation ? (
-                <p className="fd-text">{finding.recommendation}</p>
-              ) : (
-                <p className="fd-empty-section">Sin recomendación registrada.</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Section: Controles de cumplimiento */}
-        <div className="fd-section">
-          <div className="fd-section-hdr" onClick={() => toggleSection('compliance')}>
-            <div className="fd-section-title">
-              <Lock size={14} color="rgba(255,255,255,.5)" /> Controles normativos mapeados
-              {controls.length > 0 && (
-                <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 5, background: 'rgba(96,165,250,.15)', color: '#93c5fd' }}>
-                  {controls.length}
-                </span>
-              )}
-            </div>
-            {expandedSections.compliance ? <ChevronUp size={14} color="rgba(255,255,255,.3)" /> : <ChevronDown size={14} color="rgba(255,255,255,.3)" />}
-          </div>
-          {expandedSections.compliance && (
-            <div className="fd-section-body">
-              {controls.length === 0 ? (
-                <p className="no-controls">No se encontraron controles mapeados para este hallazgo. Asegurate de que tenga un CWE o categoría asignada.</p>
-              ) : (
-                Object.entries(byFw).map(([fw, ctrls]) => (
-                  <div key={fw} className="fw-block">
-                    <div className="fw-label" style={{ color: FW_COLORS[fw] ?? '#60a5fa' }}>
-                      {FW_NAMES[fw] ?? fw} — {ctrls.length} control{ctrls.length !== 1 ? 'es' : ''}
-                    </div>
-                    {ctrls.map(({ control }) => (
-                      <div
-                        key={control.id}
-                        className="ctrl-item"
-                        style={{ borderLeftColor: FW_COLORS[fw] ?? '#60a5fa' }}
-                      >
-                        <div className="ctrl-id" style={{ color: FW_COLORS[fw] ?? '#60a5fa' }}>{control.id}</div>
-                        <div className="ctrl-info">
-                          <div className="ctrl-title">{control.title}</div>
-                          <div className="ctrl-desc">{control.description}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))
-              )}
-
-              {controls.length > 0 && (
-                <div style={{ marginTop: 12 }}>
-                  <Link
-                    href={`/projects/${params.id}/compliance`}
-                    className="btn-action btn-compliance"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 9, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}
+        <div className="form-card">
+          <p className="form-title">
+            <Plus size={15} color="rgba(255,255,255,.4)" /> Nuevo retest
+          </p>
+          <form onSubmit={handleSubmit}>
+            {/* Resultado */}
+            <div className="field">
+              <label className="field-label">Resultado de la verificación</label>
+              <div className="result-opts">
+                {(Object.entries(RESULT_CFG) as [keyof typeof RESULT_CFG, (typeof RESULT_CFG)[keyof typeof RESULT_CFG]][]).map(([key, cfg]) => (
+                  <div
+                    key={key}
+                    className={`result-opt${result === key ? ' selected' : ''}`}
+                    style={{ '--rc': cfg.color, '--rb': cfg.border, '--rbg': cfg.bg } as React.CSSProperties}
+                    onClick={() => setResult(key)}
                   >
-                    <Lock size={12} /> Ver módulo de Cumplimiento
-                  </Link>
-                </div>
-              )}
+                    <span style={{ color: result === key ? cfg.color : 'rgba(255,255,255,.3)' }}>{cfg.icon}</span>
+                    {cfg.label}
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
+
+            {/* Responsable */}
+            <div className="field">
+              <label className="field-label">
+                <User size={11} style={{ display: 'inline', marginRight: 4 }} />
+                Responsable del retest
+              </label>
+              <input
+                type="text"
+                className="rt-input"
+                placeholder="Nombre del pentester"
+                value={retestedBy}
+                onChange={e => setRetestedBy(e.target.value)}
+              />
+            </div>
+
+            {/* Notas */}
+            <div className="field">
+              <label className="field-label">
+                <FileText size={11} style={{ display: 'inline', marginRight: 4 }} />
+                Notas / Evidencia
+              </label>
+              <textarea
+                className="rt-input"
+                placeholder="Describí qué se probó, cómo, y cuál fue el resultado. Podés incluir URLs, payloads, o pasos de reproducción."
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+              />
+            </div>
+
+            {/* Actualizar status */}
+            <div className="field">
+              <div className="check-row" onClick={() => setUpdateStatus(v => !v)}>
+                <div className={`check-box${updateStatus ? ' on' : ''}`}>
+                  {updateStatus && <CheckCircle2 size={11} color="#fff" />}
+                </div>
+                <span className="check-text">
+                  Actualizar estado del hallazgo automáticamente
+                  {' '}→{' '}
+                  <strong style={{ color: RESULT_CFG[result].color }}>
+                    {result === 'pass' ? 'Resuelto' : result === 'fail' ? 'Abierto' : 'En revisión'}
+                  </strong>
+                </span>
+              </div>
+            </div>
+
+            <button type="submit" className="submit-btn" disabled={saving}>
+              <RefreshCw size={15} />
+              {saving ? 'Guardando…' : 'Registrar retest'}
+            </button>
+          </form>
         </div>
 
-        {/* Actions */}
-        <div className="fd-actions">
-          <Link
-            href={`/projects/${params.id}/findings/${params.findingId}/edit`}
-            className="btn-action btn-edit"
-          >
-            <Edit2 size={13} /> Editar hallazgo
-          </Link>
-          <Link
-            href={`/projects/${params.id}/findings/${params.findingId}/retest`}
-            className="btn-action btn-retest"
-          >
-            <RefreshCw size={13} /> Retesting
-          </Link>
-          <Link href={`/projects/${params.id}/findings`} className="btn-action btn-edit">
-            <ArrowLeft size={13} /> Volver a hallazgos
-          </Link>
+        {/* Historial */}
+        <div>
+          <p className="hist-title">
+            <Clock size={12} /> Historial ({retests.length})
+          </p>
+          {retests.length === 0 ? (
+            <p className="hist-empty">Sin retests previos para este hallazgo.</p>
+          ) : (
+            retests.map(r => {
+              const cfg = RESULT_CFG[r.result]
+              return (
+                <div key={r.id} className="hist-item" style={{ borderLeftColor: cfg.border }}>
+                  <div className="hist-head">
+                    <span className="hist-result" style={{ color: cfg.color }}>
+                      {cfg.icon} {cfg.label}
+                    </span>
+                    {r.retested_by && (
+                      <span className="hist-by">
+                        <User size={10} /> {r.retested_by}
+                      </span>
+                    )}
+                    <span className="hist-date">
+                      {new Date(r.retested_at).toLocaleDateString('es-AR', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                  {r.notes && <p className="hist-notes">{r.notes}</p>}
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
     </>
