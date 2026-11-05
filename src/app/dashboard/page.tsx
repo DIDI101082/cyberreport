@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
   Shield, AlertTriangle, CheckCircle,
@@ -48,17 +49,21 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) redirect('/login')
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('tenant_id, full_name')
-    .eq('id', user!.id)
+    .eq('id', user.id)
     .single()
+
+  if (!profile?.tenant_id) redirect('/login')
 
   const { data: projects } = await supabase
     .from('projects')
     .select(`id, name, status, start_date, findings(severity, status)`)
-    .eq('tenant_id', profile!.tenant_id)
+    .eq('tenant_id', profile.tenant_id)
     .neq('status', 'archived')
     .order('created_at', { ascending: false })
     .limit(6)
