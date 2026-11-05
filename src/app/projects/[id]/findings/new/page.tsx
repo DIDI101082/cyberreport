@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Sparkles, Loader2, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Sparkles, Loader2, ChevronDown, BookOpen, X, Search } from 'lucide-react'
 import Link from 'next/link'
 import type { SeverityLevel } from '@/types'
 import { SEVERITY_ORDER, SEVERITY_CONFIG } from '@/lib/utils/severity'
+import { FINDING_TEMPLATES, TEMPLATE_CATEGORIES } from '@/lib/templates/findings'
+import CvssCalculator from '@/components/ui/CvssCalculator'
 
 const CATEGORIES = [
   { value: 'web',            label: 'Web (OWASP)' },
@@ -28,6 +30,10 @@ const SEV_ACTIVE: Record<string, { bg: string; color: string; border: string }> 
   medium:   { bg: 'rgba(234,179,8,0.15)',   color: '#fde047', border: 'rgba(234,179,8,0.35)' },
   low:      { bg: 'rgba(96,165,250,0.15)',  color: '#93c5fd', border: 'rgba(96,165,250,0.35)' },
   info:     { bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.65)', border: 'rgba(255,255,255,0.2)' },
+}
+
+const SEV_COLORS: Record<string, string> = {
+  critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#60a5fa', info: 'rgba(255,255,255,.4)',
 }
 
 export default function NewFindingPage() {
@@ -55,6 +61,36 @@ export default function NewFindingPage() {
   const [aiProvider, setAiProvider] = useState<'anthropic' | 'openai'>('anthropic')
   const [providerOpen, setProviderOpen] = useState(false)
   const [aiStatus, setAiStatus] = useState<'idle' | 'success' | 'error'>('idle')
+
+  // Template picker state
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [templateSearch, setTemplateSearch] = useState('')
+  const [templateCat, setTemplateCat] = useState('all')
+
+  const filteredTemplates = FINDING_TEMPLATES.filter(t => {
+    const matchCat = templateCat === 'all' || t.tags.includes(templateCat)
+    const q = templateSearch.toLowerCase()
+    const matchQ = !q || t.title.toLowerCase().includes(q) || t.tags.some(tag => tag.toLowerCase().includes(q))
+    return matchCat && matchQ
+  })
+
+  function applyTemplate(templateId: string) {
+    const t = FINDING_TEMPLATES.find(x => x.id === templateId)
+    if (!t) return
+    setForm(f => ({
+      ...f,
+      title:          t.title,
+      severity:       t.severity,
+      category:       t.category,
+      cwe_id:         t.cwe_id ?? '',
+      description:    t.description,
+      impact:         t.impact,
+      recommendation: t.recommendation,
+    }))
+    setShowTemplates(false)
+    setTemplateSearch('')
+    setTemplateCat('all')
+  }
 
   async function handleAIGenerate() {
     if (!form.title) { alert('Ingresá el título del hallazgo primero'); return }
@@ -101,7 +137,6 @@ export default function NewFindingPage() {
     e.preventDefault()
     setSaving(true)
 
-    // Obtener tenant_id del perfil del usuario autenticado
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase
       .from('profiles')
@@ -136,11 +171,19 @@ export default function NewFindingPage() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: translateY(0) } }
         .nf-wrap { padding: 24px 28px; max-width: 740px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: #fff; }
         .nf-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(255,255,255,0.4); text-decoration: none; margin-bottom: 20px; transition: color 0.12s; }
         .nf-back:hover { color: rgba(255,255,255,0.8); }
         .nf-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; gap: 12px; flex-wrap: wrap; }
         .nf-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0; }
+
+        /* Button row */
+        .btn-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        /* Template button */
+        .btn-template { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); color: #34d399; font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; font-family: inherit; transition: all 0.14s; white-space: nowrap; }
+        .btn-template:hover { background: rgba(16,185,129,0.22); }
 
         /* AI button group */
         .ai-group { display: flex; align-items: center; gap: 0; }
@@ -182,7 +225,115 @@ export default function NewFindingPage() {
         .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
         .spin { animation: spin 1s linear infinite; }
         .field-hint { font-size: 11px; color: rgba(255,255,255,0.28); margin-top: 4px; }
+
+        /* Template modal overlay */
+        .tm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: flex; align-items: flex-start; justify-content: center; padding: 48px 16px 16px; backdrop-filter: blur(4px); }
+        .tm-modal { background: #0d1829; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; width: 100%; max-width: 680px; max-height: calc(100vh - 80px); display: flex; flex-direction: column; animation: slideUp 0.18s ease; box-shadow: 0 24px 60px rgba(0,0,0,0.6); overflow: hidden; }
+        .tm-header { padding: 18px 20px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .tm-title { font-size: 15px; font-weight: 700; color: #fff; margin: 0; flex: 1; }
+        .tm-close { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px; border-radius: 6px; transition: color 0.12s; display: flex; }
+        .tm-close:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.07); }
+        .tm-search-row { padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+        .tm-search { flex: 1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; padding: 8px 12px 8px 34px; font-size: 13px; color: #fff; font-family: inherit; outline: none; transition: border-color 0.12s; }
+        .tm-search:focus { border-color: rgba(59,130,246,0.5); }
+        .tm-search::placeholder { color: rgba(255,255,255,0.3); }
+        .tm-search-wrap { position: relative; flex: 1; }
+        .tm-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.3); pointer-events: none; }
+        .tm-cats { display: flex; gap: 6px; overflow-x: auto; padding: 10px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
+        .tm-cats::-webkit-scrollbar { height: 3px; }
+        .tm-cats::-webkit-scrollbar-track { background: transparent; }
+        .tm-cats::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        .tm-cat { font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); cursor: pointer; white-space: nowrap; transition: all 0.12s; }
+        .tm-cat:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
+        .tm-cat.active { background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #34d399; }
+        .tm-list { overflow-y: auto; padding: 10px; flex: 1; }
+        .tm-item { padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.07); margin-bottom: 6px; cursor: pointer; transition: all 0.12s; }
+        .tm-item:last-child { margin-bottom: 0; }
+        .tm-item:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.14); }
+        .tm-item-top { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
+        .tm-item-title { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.88); flex: 1; min-width: 0; }
+        .tm-sev { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+        .tm-cwe { font-size: 10.5px; color: rgba(255,255,255,0.3); font-family: 'SF Mono', monospace; }
+        .tm-desc { font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .tm-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+        .tm-tag { font-size: 10.5px; padding: 2px 7px; border-radius: 4px; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); }
+        .tm-empty { padding: 40px; text-align: center; color: rgba(255,255,255,0.3); font-size: 13px; }
+        .tm-count { font-size: 11.5px; color: rgba(255,255,255,0.3); padding: 8px 20px; border-top: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
       `}</style>
+
+      {/* Template picker modal */}
+      {showTemplates && (
+        <div className="tm-overlay" onClick={e => { if (e.target === e.currentTarget) setShowTemplates(false) }}>
+          <div className="tm-modal">
+            <div className="tm-header">
+              <BookOpen size={16} color="#34d399" />
+              <h2 className="tm-title">Biblioteca de vulnerabilidades</h2>
+              <button className="tm-close" onClick={() => setShowTemplates(false)}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="tm-search-row">
+              <div className="tm-search-wrap">
+                <Search size={14} className="tm-search-icon" />
+                <input
+                  autoFocus
+                  className="tm-search"
+                  placeholder="Buscar por nombre o tag (ej: SQLi, XSS, OWASP…)"
+                  value={templateSearch}
+                  onChange={e => setTemplateSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="tm-cats">
+              {TEMPLATE_CATEGORIES.map(c => (
+                <button
+                  key={c.value}
+                  className={`tm-cat${templateCat === c.value ? ' active' : ''}`}
+                  onClick={() => setTemplateCat(c.value)}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="tm-list">
+              {filteredTemplates.length === 0 ? (
+                <div className="tm-empty">No se encontraron templates con esa búsqueda.</div>
+              ) : (
+                filteredTemplates.map(t => {
+                  const sevColor = SEV_COLORS[t.severity] ?? '#fff'
+                  return (
+                    <div key={t.id} className="tm-item" onClick={() => applyTemplate(t.id)}>
+                      <div className="tm-item-top">
+                        <span className="tm-item-title">{t.title}</span>
+                        <span
+                          className="tm-sev"
+                          style={{ background: `${sevColor}22`, color: sevColor }}
+                        >
+                          {t.severity.charAt(0).toUpperCase() + t.severity.slice(1)}
+                        </span>
+                        {t.cwe_id && <span className="tm-cwe">{t.cwe_id}</span>}
+                      </div>
+                      <p className="tm-desc">{t.description}</p>
+                      <div className="tm-tags">
+                        {t.tags.map(tag => (
+                          <span key={tag} className="tm-tag">{tag}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="tm-count">
+              {filteredTemplates.length} template{filteredTemplates.length !== 1 ? 's' : ''} · Click para aplicar al formulario
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="nf-wrap">
         <Link href={`/projects/${params.id}`} className="nf-back">
@@ -192,42 +343,50 @@ export default function NewFindingPage() {
         <div className="nf-header">
           <h1 className="nf-title">Nuevo hallazgo</h1>
 
-          {/* AI button + provider selector */}
-          <div className="ai-group">
-            <button
-              type="button"
-              onClick={handleAIGenerate}
-              disabled={generating}
-              className={`btn-ai${aiStatus === 'success' ? ' success' : aiStatus === 'error' ? ' error' : ''}`}
-            >
-              {generating
-                ? <Loader2 size={13} className="spin" />
-                : <Sparkles size={13} />}
-              {generating ? 'Generando…' : aiStatus === 'success' ? '✓ Generado' : 'Generar con IA'}
+          <div className="btn-row">
+            {/* Template picker */}
+            <button type="button" className="btn-template" onClick={() => setShowTemplates(true)}>
+              <BookOpen size={13} />
+              Usar template
             </button>
-            <div style={{ position: 'relative' }}>
+
+            {/* AI button + provider selector */}
+            <div className="ai-group">
               <button
                 type="button"
-                className="provider-btn"
-                onClick={() => setProviderOpen(o => !o)}
+                onClick={handleAIGenerate}
+                disabled={generating}
+                className={`btn-ai${aiStatus === 'success' ? ' success' : aiStatus === 'error' ? ' error' : ''}`}
               >
-                {selectedProvider.icon}
-                <ChevronDown size={11} />
+                {generating
+                  ? <Loader2 size={13} className="spin" />
+                  : <Sparkles size={13} />}
+                {generating ? 'Generando…' : aiStatus === 'success' ? '✓ Generado' : 'Generar con IA'}
               </button>
-              {providerOpen && (
-                <div className="provider-dropdown">
-                  {AI_PROVIDERS.map(p => (
-                    <div
-                      key={p.value}
-                      className={`provider-opt${p.value === aiProvider ? ' active' : ''}`}
-                      onClick={() => { setAiProvider(p.value as 'anthropic' | 'openai'); setProviderOpen(false); setAiStatus('idle') }}
-                    >
-                      <span>{p.icon}</span>
-                      <span>{p.label}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  className="provider-btn"
+                  onClick={() => setProviderOpen(o => !o)}
+                >
+                  {selectedProvider.icon}
+                  <ChevronDown size={11} />
+                </button>
+                {providerOpen && (
+                  <div className="provider-dropdown">
+                    {AI_PROVIDERS.map(p => (
+                      <div
+                        key={p.value}
+                        className={`provider-opt${p.value === aiProvider ? ' active' : ''}`}
+                        onClick={() => { setAiProvider(p.value as 'anthropic' | 'openai'); setProviderOpen(false); setAiStatus('idle') }}
+                      >
+                        <span>{p.icon}</span>
+                        <span>{p.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -297,6 +456,16 @@ export default function NewFindingPage() {
             </div>
           </div>
 
+          {/* CVSS Calculator */}
+          <div className="nf-field" style={{ marginBottom: 16 }}>
+            <CvssCalculator
+              initialVector={form.cvss_vector || undefined}
+              onApply={(score, vector) => {
+                setForm(f => ({ ...f, cvss_score: score.toFixed(1), cvss_vector: vector }))
+              }}
+            />
+          </div>
+
           <div className="section-sep" />
 
           {/* AI-generated content */}
@@ -304,7 +473,7 @@ export default function NewFindingPage() {
             <p className="ai-section-label">
               <Sparkles size={12} />
               Contenido técnico
-              <span className="ai-hint">Generado con IA · editable</span>
+              <span className="ai-hint">Generado con IA o desde template · editable</span>
             </p>
             <div className="nf-field">
               <label className="nf-label">Descripción</label>
