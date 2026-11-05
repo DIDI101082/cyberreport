@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
   ArrowLeft, RefreshCw, CheckCircle2, XCircle, AlertTriangle,
-  Clock, User, FileText, Plus,
+  Clock, User, FileText, Plus, Paperclip,
 } from 'lucide-react'
 
 interface Retest {
@@ -158,21 +158,34 @@ export default function RetestPage() {
       `}</style>
 
       <div className="rt">
-        <Link href={`/projects/${params.id}/findings/${params.findingId}`} className="back">
-          <ArrowLeft size={14} /> Volver al hallazgo
+        <Link href={`/projects/${params.id}/findings`} className="back">
+          <ArrowLeft size={14} /> Volver a hallazgos
         </Link>
 
         <h1 className="rt-title">Retesting</h1>
         <p className="rt-sub">Registrá el resultado de la verificación del hallazgo</p>
 
-        <div className="finding-pill">
-          <span
-            className="finding-pill-sev"
-            style={{ background: `${SEV_COLORS[finding.severity] ?? '#6b7280'}22`, color: SEV_COLORS[finding.severity] ?? '#6b7280' }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
+          <div className="finding-pill" style={{ marginBottom: 0 }}>
+            <span
+              className="finding-pill-sev"
+              style={{ background: `${SEV_COLORS[finding.severity] ?? '#6b7280'}22`, color: SEV_COLORS[finding.severity] ?? '#6b7280' }}
+            >
+              {finding.severity}
+            </span>
+            <span className="finding-pill-title">{finding.title}</span>
+          </div>
+          <Link
+            href={`/projects/${params.id}/findings/${params.findingId}/evidence`}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+              background: 'rgba(96,165,250,.1)', border: '1px solid rgba(96,165,250,.25)',
+              borderRadius: 9, fontSize: 12.5, fontWeight: 600, color: '#93c5fd',
+              textDecoration: 'none', whiteSpace: 'nowrap', transition: 'all .12s',
+            }}
           >
-            {finding.severity}
-          </span>
-          <span className="finding-pill-title">{finding.title}</span>
+            <Paperclip size={13} /> Ver evidencias
+          </Link>
         </div>
 
         {success && (
