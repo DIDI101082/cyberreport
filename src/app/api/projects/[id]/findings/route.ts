@@ -8,7 +8,6 @@ export async function POST(
   try {
     const supabase = await createClient()
 
-    // Usuario autenticado + tenant_id
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
@@ -22,20 +21,22 @@ export async function POST(
 
     const body = await req.json()
 
+    const affectedEndpoint: string = body.affected_endpoint ?? ''
+
     const { error } = await supabase.from('findings').insert({
       tenant_id:           profile?.tenant_id ?? null,
       project_id:          params.id,
       title:               body.title               ?? 'Sin título',
       severity:            body.severity             ?? 'info',
-      status:              body.status               ?? 'open',
-      category:            body.category             ?? null,
+      status:              'open',
+      category:            body.tool_source          ?? body.category ?? null,
       description:         body.description          ?? null,
       recommendation:      body.recommendation       ?? null,
       impact:              body.impact               ?? null,
       evidence:            body.evidence             ?? null,
-      affected_components: body.affected_components  ?? [],
-      cve_id:              body.cve_id               ?? null,
-      cwe_id:              body.cwe_id               ?? null,
+      affected_components: affectedEndpoint ? [affectedEndpoint] : [],
+      cve_id:              body.cve_id || null,
+      cwe_id:              body.cwe_id || null,
       cvss_score:          body.cvss_score           ?? null,
       cvss_vector:         body.cvss_vector          ?? null,
     })
