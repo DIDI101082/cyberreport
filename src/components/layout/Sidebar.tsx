@@ -4,10 +4,11 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, FolderOpen, Building2,
-  FileText, Settings, LogOut, Code2, CreditCard, ChevronRight
+  FileText, Settings, LogOut, Code2, CreditCard, ChevronRight, Shield
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 const NAV_ITEMS = [
   { href: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
@@ -26,6 +27,15 @@ export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [role, setRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('profiles').select('role').eq('id', user.id).single()
+        .then(({ data }) => setRole(data?.role ?? null))
+    })
+  }, [])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -154,6 +164,19 @@ export default function Sidebar() {
               </Link>
             )
           })}
+
+          {/* Admin section — solo super_admin */}
+          {role === 'super_admin' && (
+            <>
+              <div className="sidebar-section" style={{ paddingLeft: 0, marginTop: 8 }}>Admin</div>
+              <Link href="/admin" className={`sidebar-link${isActive('/admin') ? ' active' : ''}`}
+                style={isActive('/admin') ? {} : { color: 'rgba(192,132,252,.7)' }}>
+                <Shield className="nav-icon" style={{ color: isActive('/admin') ? '#c084fc' : undefined }} />
+                <span className="sidebar-link-label">Super Admin</span>
+                {isActive('/admin') && <ChevronRight className="sidebar-link-arrow" />}
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Bottom */}
