@@ -30,11 +30,8 @@ export default function Sidebar() {
   const [role, setRole] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      supabase.from('profiles').select('role').eq('id', user.id).single()
-        .then(({ data }) => setRole(data?.role ?? null))
-    })
+    supabase.from('profiles').select('role').maybeSingle()
+      .then(({ data }) => setRole(data?.role ?? null))
   }, [])
 
   async function handleLogout() {
