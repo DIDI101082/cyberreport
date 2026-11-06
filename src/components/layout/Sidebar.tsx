@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, FolderOpen, Building2,
-  FileText, Settings, LogOut, Code2, CreditCard, ChevronRight, Shield, BookOpen
+  FileText, Settings, LogOut, Code2, ChevronRight, Shield, BookOpen
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -20,8 +20,7 @@ const NAV_ITEMS = [
 ]
 
 const BOTTOM_NAV = [
-  { href: '/billing',  icon: CreditCard, label: 'Planes' },
-  { href: '/settings', icon: Settings,   label: 'Configuración' },
+  { href: '/settings', icon: Settings, label: 'Configuración' },
 ]
 
 export default function Sidebar() {
