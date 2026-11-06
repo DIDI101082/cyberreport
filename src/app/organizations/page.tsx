@@ -41,7 +41,7 @@ export default function OrganizationsPage() {
 
   return (
     <>
-      <style>{`
+            <style>{`
         .pg-wrap { padding: 28px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: #fff; }
         .pg-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
         .pg-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0 0 4px; }
@@ -76,7 +76,7 @@ export default function OrganizationsPage() {
         .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
         .industry-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 99px; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
       `}</style>
-
+      `}</style>
       <div className="pg-wrap">
         <div className="pg-header">
           <div>
