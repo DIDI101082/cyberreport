@@ -15,10 +15,20 @@ const TYPE_LABEL: Record<string, string> = {
 
 export default async function ProjectsPage() {
   const supabase = await createClient()
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('*, organization:organizations(name), findings(severity)')
-    .order('created_at', { ascending: false })
+
+  // Auth + tenant isolation
+  const { data: { user } } = await supabase.auth.getUser()
+  const tenantId = user
+    ? (await supabase.from('profiles').select('tenant_id').eq('id', user.id).single()).data?.tenant_id ?? null
+    : null
+
+  const { data: projects } = tenantId
+    ? await supabase
+        .from('projects')
+        .select('*, organization:organizations(name), findings(severity)')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+    : { data: [] }
 
   return (
     <>
