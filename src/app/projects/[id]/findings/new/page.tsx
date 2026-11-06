@@ -20,8 +20,8 @@ const CATEGORIES = [
 ]
 
 const AI_PROVIDERS = [
-  { value: 'anthropic', label: 'Claude (Anthropic)', icon: '🟣' },
-  { value: 'openai',    label: 'GPT-4o (OpenAI)',    icon: '🟢' },
+  { value: 'anthropic', label: 'Claude (Anthropic)',    icon: '🟣' },
+  { value: 'gemini',    label: 'Gemini Flash (Google)', icon: '🔵' },
 ]
 
 const SEV_ACTIVE: Record<string, { bg: string; color: string; border: string }> = {
@@ -58,7 +58,7 @@ export default function NewFindingPage() {
   })
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
-  const [aiProvider, setAiProvider] = useState<'anthropic' | 'openai'>('anthropic')
+  const [aiProvider, setAiProvider] = useState<'anthropic' | 'gemini'>('anthropic')
   const [providerOpen, setProviderOpen] = useState(false)
   const [aiStatus, setAiStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
@@ -378,7 +378,7 @@ export default function NewFindingPage() {
                       <div
                         key={p.value}
                         className={`provider-opt${p.value === aiProvider ? ' active' : ''}`}
-                        onClick={() => { setAiProvider(p.value as 'anthropic' | 'openai'); setProviderOpen(false); setAiStatus('idle') }}
+                        onClick={() => { setAiProvider(p.value as 'anthropic' | 'gemini'); setProviderOpen(false); setAiStatus('idle') }}
                       >
                         <span>{p.icon}</span>
                         <span>{p.label}</span>
