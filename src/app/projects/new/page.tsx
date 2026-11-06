@@ -23,8 +23,17 @@ export default function NewProjectPage() {
   })
 
   useEffect(() => {
-    supabase.from('organizations').select('*').order('name').then(({ data }) => {
-      if (data) setOrgs(data)
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('profiles').select('tenant_id').eq('id', user.id).single().then(({ data: profile }) => {
+        if (!profile?.tenant_id) return
+        supabase
+          .from('organizations')
+          .select('*')
+          .eq('tenant_id', profile.tenant_id)
+          .order('name')
+          .then(({ data }) => { if (data) setOrgs(data) })
+      })
     })
   }, [])
 
@@ -42,9 +51,16 @@ export default function NewProjectPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+
+    // Fetch tenant_id before insert
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: profile } = user
+      ? await supabase.from('profiles').select('tenant_id').eq('id', user.id).single()
+      : { data: null }
+
     const { data, error } = await supabase
       .from('projects')
-      .insert({ ...form, status: 'in_progress' })
+      .insert({ ...form, status: 'in_progress', tenant_id: profile?.tenant_id ?? null })
       .select('id')
       .single()
 
