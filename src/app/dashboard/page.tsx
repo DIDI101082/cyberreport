@@ -124,6 +124,16 @@ export default async function DashboardPage() {
     { name: 'NIST CSF 2.0', pct: Math.round((coveredNist.size / NIST_TOTAL) * 100), color: '#a78bfa' },
   ]
 
+  const sevDist = [
+    { key: 'critical', label: 'Crítico', color: '#ef4444' },
+    { key: 'high',     label: 'Alto',    color: '#f97316' },
+    { key: 'medium',   label: 'Medio',   color: '#eab308' },
+    { key: 'low',      label: 'Bajo',    color: '#60a5fa' },
+    { key: 'info',     label: 'Info',    color: '#6b7280' },
+  ].map(s => ({ ...s, count: allFindings?.filter(f => f.severity === s.key).length ?? 0 }))
+
+  const maxFindings = Math.max(...(projects?.map(p => ((p.findings ?? []) as unknown[]).length) ?? [0]), 1)
+
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
   const firstName = profile?.full_name?.split(' ')[0] ?? user!.email?.split('@')[0] ?? 'Usuario'
@@ -706,6 +716,78 @@ export default async function DashboardPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Charts: distribución + por proyecto */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
+
+          {/* Distribución por severidad */}
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">
+                <BarChart2 size={14} color="rgba(255,255,255,0.4)" />
+                Distribución por severidad
+              </div>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>{total} hallazgos</span>
+            </div>
+            <div style={{ padding: '14px 18px' }}>
+              {sevDist.map(s => (
+                <div key={s.key} style={{ marginBottom: 11 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{s.label}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>
+                        {total > 0 ? `${Math.round((s.count / total) * 100)}%` : '0%'}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: s.count > 0 ? s.color : 'rgba(255,255,255,0.2)', minWidth: 20, textAlign: 'right' as const }}>{s.count}</span>
+                    </div>
+                  </div>
+                  <div style={{ height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: total > 0 ? `${(s.count / total) * 100}%` : '0%', background: s.color, borderRadius: 99 }} />
+                  </div>
+                </div>
+              ))}
+              {total === 0 && (
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', textAlign: 'center', margin: '16px 0' }}>Sin hallazgos registrados</p>
+              )}
+            </div>
+          </div>
+
+          {/* Hallazgos por proyecto */}
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">
+                <FolderOpen size={14} color="rgba(255,255,255,0.4)" />
+                Hallazgos por proyecto
+              </div>
+              <Link href="/projects" className="panel-link">Ver todos <ChevronRight size={12} /></Link>
+            </div>
+            <div style={{ padding: '14px 18px' }}>
+              {projects?.length ? projects.map(project => {
+                const pFindings = (project.findings ?? []) as { severity: string; status: string }[]
+                const pOpen = pFindings.filter(f => f.status !== 'resolved').length
+                const pCrit = pFindings.filter(f => f.severity === 'critical' && f.status !== 'resolved').length
+                const pct = maxFindings > 0 ? (pFindings.length / maxFindings) * 100 : 0
+                const barColor = pCrit > 0 ? '#ef4444' : pOpen > 0 ? '#f97316' : '#4ade80'
+                return (
+                  <div key={project.id} style={{ marginBottom: 11 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>{project.name}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: pOpen > 0 ? '#fff' : '#4ade80', flexShrink: 0 }}>
+                        {pOpen} <span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(255,255,255,0.3)' }}>abiertos</span>
+                      </span>
+                    </div>
+                    <div style={{ height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 99 }} />
+                    </div>
+                  </div>
+                )
+              }) : (
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', textAlign: 'center', margin: '16px 0' }}>Sin proyectos activos</p>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
     </>
