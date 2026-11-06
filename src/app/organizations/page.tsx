@@ -12,8 +12,17 @@ export default function OrganizationsPage() {
   const [form, setForm] = useState({ name: '', contact_email: '', industry: '', contact_name: '' })
   const [saving, setSaving] = useState(false)
 
+  async function getTenantId() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const { data: profile } = await supabase.from('profiles').select('tenant_id').eq('id', user.id).single()
+    return profile?.tenant_id ?? null
+  }
+
   async function fetchOrgs() {
-    const { data } = await supabase.from('organizations').select('*').order('name')
+    const tenantId = await getTenantId()
+    if (!tenantId) return
+    const { data } = await supabase.from('organizations').select('*').eq('tenant_id', tenantId).order('name')
     if (data) setOrgs(data)
   }
 
@@ -22,7 +31,8 @@ export default function OrganizationsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await supabase.from('organizations').insert(form)
+    const tenantId = await getTenantId()
+    await supabase.from('organizations').insert({ ...form, tenant_id: tenantId })
     setForm({ name: '', contact_email: '', industry: '', contact_name: '' })
     setShowForm(false)
     setSaving(false)
@@ -94,86 +104,3 @@ export default function OrganizationsPage() {
                   <label className="form-label">Nombre *</label>
                   <input
                     required
-                    value={form.name}
-                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    className="form-input"
-                    placeholder="Empresa S.A."
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Nombre de contacto</label>
-                  <input
-                    value={form.contact_name}
-                    onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))}
-                    className="form-input"
-                    placeholder="Juan Pérez"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email de contacto</label>
-                  <input
-                    type="email"
-                    value={form.contact_email}
-                    onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))}
-                    className="form-input"
-                    placeholder="cto@empresa.com"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Industria</label>
-                  <select
-                    value={form.industry}
-                    onChange={e => setForm(f => ({ ...f, industry: e.target.value }))}
-                    className="form-input"
-                  >
-                    <option value="">Seleccionar…</option>
-                    {['Fintech', 'Salud', 'Retail', 'Gobierno', 'Educación', 'Manufactura', 'Tecnología', 'Otro'].map(i => (
-                      <option key={i} value={i}>{i}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-footer">
-                  <button type="button" onClick={() => setShowForm(false)} className="btn-cancel">Cancelar</button>
-                  <button type="submit" disabled={saving} className="btn-save">
-                    {saving ? 'Guardando…' : 'Crear cliente'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Lista */}
-        {!orgs.length ? (
-          <div className="list-panel">
-            <div className="empty-box">
-              <Building2 size={36} color="rgba(255,255,255,0.1)" />
-              <p className="empty-text">No hay clientes registrados aún</p>
-            </div>
-          </div>
-        ) : (
-          <div className="list-panel">
-            {orgs.map(org => (
-              <div key={org.id} className="org-row">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div className="org-icon">
-                    <Building2 size={17} color="#a78bfa" />
-                  </div>
-                  <div>
-                    <p className="org-name">{org.name}</p>
-                    <p className="org-meta" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {org.contact_email && <span>{org.contact_email}</span>}
-                      {org.contact_email && org.industry && <span>·</span>}
-                      {org.industry && <span className="industry-tag"><Globe size={10} />{org.industry}</span>}
-                      {!org.contact_email && !org.industry && <span>Sin datos de contacto</span>}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </>
-  )
-}
