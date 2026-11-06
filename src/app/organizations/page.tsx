@@ -41,7 +41,7 @@ export default function OrganizationsPage() {
 
   return (
     <>
-            <style>{`
+      <style>{`
         .pg-wrap { padding: 28px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: #fff; }
         .pg-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
         .pg-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0 0 4px; }
@@ -56,7 +56,6 @@ export default function OrganizationsPage() {
         .org-meta { font-size: 12px; color: rgba(255,255,255,0.35); margin: 0; }
         .empty-box { padding: 64px 20px; text-align: center; }
         .empty-text { color: rgba(255,255,255,0.3); font-size: 13px; margin: 12px 0 0; }
-        /* Modal */
         .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
         .modal-box { background: #131f35; border: 1px solid rgba(255,255,255,0.1); border-radius: 18px; width: 100%; max-width: 420px; padding: 24px; }
         .modal-title { font-size: 16px; font-weight: 700; color: #fff; margin: 0; }
@@ -76,7 +75,7 @@ export default function OrganizationsPage() {
         .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
         .industry-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 99px; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
       `}</style>
-      `}</style>
+
       <div className="pg-wrap">
         <div className="pg-header">
           <div>
@@ -89,7 +88,6 @@ export default function OrganizationsPage() {
           </button>
         </div>
 
-        {/* Modal */}
         {showForm && (
           <div className="modal-bg" onClick={e => { if (e.target === e.currentTarget) setShowForm(false) }}>
             <div className="modal-box">
@@ -104,3 +102,85 @@ export default function OrganizationsPage() {
                   <label className="form-label">Nombre *</label>
                   <input
                     required
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    className="form-input"
+                    placeholder="Empresa S.A."
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Nombre de contacto</label>
+                  <input
+                    value={form.contact_name}
+                    onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))}
+                    className="form-input"
+                    placeholder="Juan Pérez"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email de contacto</label>
+                  <input
+                    type="email"
+                    value={form.contact_email}
+                    onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))}
+                    className="form-input"
+                    placeholder="cto@empresa.com"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Industria</label>
+                  <select
+                    value={form.industry}
+                    onChange={e => setForm(f => ({ ...f, industry: e.target.value }))}
+                    className="form-input"
+                  >
+                    <option value="">Seleccionar…</option>
+                    {['Fintech', 'Salud', 'Retail', 'Gobierno', 'Educación', 'Manufactura', 'Tecnología', 'Otro'].map(i => (
+                      <option key={i} value={i}>{i}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-footer">
+                  <button type="button" onClick={() => setShowForm(false)} className="btn-cancel">Cancelar</button>
+                  <button type="submit" disabled={saving} className="btn-save">
+                    {saving ? 'Guardando…' : 'Crear cliente'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {!orgs.length ? (
+          <div className="list-panel">
+            <div className="empty-box">
+              <Building2 size={36} color="rgba(255,255,255,0.1)" />
+              <p className="empty-text">No hay clientes registrados aún</p>
+            </div>
+          </div>
+        ) : (
+          <div className="list-panel">
+            {orgs.map(org => (
+              <div key={org.id} className="org-row">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div className="org-icon">
+                    <Building2 size={17} color="#a78bfa" />
+                  </div>
+                  <div>
+                    <p className="org-name">{org.name}</p>
+                    <p className="org-meta" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {org.contact_email && <span>{org.contact_email}</span>}
+                      {org.contact_email && org.industry && <span>·</span>}
+                      {org.industry && <span className="industry-tag"><Globe size={10} />{org.industry}</span>}
+                      {!org.contact_email && !org.industry && <span>Sin datos de contacto</span>}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
