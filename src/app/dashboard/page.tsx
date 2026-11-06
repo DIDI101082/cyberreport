@@ -55,30 +55,39 @@ export default async function DashboardPage() {
   const { data: profile } = await supabase
     .from('profiles')
     .select('tenant_id, full_name')
-    .eq('id', user.id)
+    .eq('id', user!.id)
     .single()
 
-  if (!profile?.tenant_id) redirect('/login')
+  // If profile is missing, render dashboard with empty data instead of redirecting.
+  // A redirect here causes a streaming SSR loop: the layout (sidebar) is already
+  // sent to the browser before the page component runs, leaving the content slot
+  // blank forever. Graceful fallback is the correct pattern here.
+  const tenantId = profile?.tenant_id ?? null
 
-  const { data: projects } = await supabase
+  const { data: projects } = tenantId ? await supabase
     .from('projects')
     .select(`id, name, status, start_date, findings(severity, status)`)
-    .eq('tenant_id', profile.tenant_id)
+    .eq('tenant_id', tenantId)
     .neq('status', 'archived')
     .order('created_at', { ascending: false })
     .limit(6)
+    : { data: [] }
 
-  const { data: recentFindings } = await supabase
+  const { data: recentFindings } = tenantId ? await supabase
     .from('findings')
     .select('id, title, severity, status, created_at, projects(name)')
+    .eq('tenant_id', tenantId)
     .in('severity', ['critical', 'high'])
     .neq('status', 'resolved')
     .order('created_at', { ascending: false })
     .limit(8)
+    : { data: [] }
 
-  const { data: allFindings } = await supabase
+  const { data: allFindings } = tenantId ? await supabase
     .from('findings')
     .select('severity, status, cwe_id, category')
+    .eq('tenant_id', tenantId)
+    : { data: [] }
 
   const total = allFindings?.length ?? 0
   const critical = allFindings?.filter(f => f.severity === 'critical').length ?? 0
@@ -117,7 +126,7 @@ export default async function DashboardPage() {
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
-  const firstName = profile?.full_name?.split(' ')[0] ?? 'Alejandro'
+  const firstName = profile?.full_name?.split(' ')[0] ?? user!.email?.split('@')[0] ?? 'Usuario'
 
   return (
     <>
