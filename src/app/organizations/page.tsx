@@ -13,10 +13,9 @@ export default function OrganizationsPage() {
   const [saving, setSaving] = useState(false)
 
   async function getTenantId() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return null
-    const { data: profile } = await supabase.from('profiles').select('tenant_id').eq('id', user.id).single()
-    return profile?.tenant_id ?? null
+    const { data, error } = await supabase.rpc('get_my_tenant_id')
+    if (error || !data) return null
+    return data as string
   }
 
   async function fetchOrgs() {
@@ -56,6 +55,7 @@ export default function OrganizationsPage() {
         .org-meta { font-size: 12px; color: rgba(255,255,255,0.35); margin: 0; }
         .empty-box { padding: 64px 20px; text-align: center; }
         .empty-text { color: rgba(255,255,255,0.3); font-size: 13px; margin: 12px 0 0; }
+        /* Modal */
         .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
         .modal-box { background: #131f35; border: 1px solid rgba(255,255,255,0.1); border-radius: 18px; width: 100%; max-width: 420px; padding: 24px; }
         .modal-title { font-size: 16px; font-weight: 700; color: #fff; margin: 0; }
@@ -88,6 +88,7 @@ export default function OrganizationsPage() {
           </button>
         </div>
 
+        {/* Modal */}
         {showForm && (
           <div className="modal-bg" onClick={e => { if (e.target === e.currentTarget) setShowForm(false) }}>
             <div className="modal-box">
@@ -151,6 +152,7 @@ export default function OrganizationsPage() {
           </div>
         )}
 
+        {/* Lista */}
         {!orgs.length ? (
           <div className="list-panel">
             <div className="empty-box">
