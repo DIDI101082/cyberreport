@@ -85,8 +85,8 @@ export default async function ProjectsPage() {
               const st = STATUS_CFG[project.status] ?? STATUS_CFG.archived
 
               return (
-                <div key={project.id} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <Link href={`/projects/${project.id}`} className="proj-row" style={{ flex: 1 }}>
+                <div key={project.id} className="proj-row" style={{ display: 'flex', alignItems: 'center' }}>
+                  <Link href={`/projects/${project.id}`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', textDecoration: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
                       <div className="proj-icon">
                         <FolderOpen size={17} color="#60a5fa" />
@@ -116,9 +116,7 @@ export default async function ProjectsPage() {
                       <ChevronRight size={15} color="rgba(255,255,255,0.2)" />
                     </div>
                   </Link>
-                  <div style={{ paddingRight: 12 }}>
-                    <DeleteProjectButton projectId={project.id} projectName={project.name} />
-                  </div>
+                  <DeleteProjectButton projectId={project.id} projectName={project.name} />
                 </div>
               )
             })}
