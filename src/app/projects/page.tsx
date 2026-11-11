@@ -17,7 +17,6 @@ const TYPE_LABEL: Record<string, string> = {
 export default async function ProjectsPage() {
   const supabase = await createClient()
 
-  // Auth check — tenant isolation is handled by RLS (projects_all policy uses get_tenant_id())
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: projects } = user
@@ -37,7 +36,7 @@ export default async function ProjectsPage() {
         .btn-primary { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; background: rgba(37,99,235,0.85); border: 1px solid rgba(59,130,246,0.4); color: #fff; font-size: 13px; font-weight: 600; border-radius: 10px; text-decoration: none; transition: all 0.15s; }
         .btn-primary:hover { background: rgba(37,99,235,1); }
         .list-panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; overflow: hidden; }
-        .proj-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); text-decoration: none; transition: background 0.12s; }
+        .proj-row { display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.12s; }
         .proj-row:last-child { border-bottom: none; }
         .proj-row:hover { background: rgba(255,255,255,0.03); }
         .proj-icon { width: 38px; height: 38px; border-radius: 10px; background: rgba(37,99,235,0.2); border: 1px solid rgba(59,130,246,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -85,7 +84,7 @@ export default async function ProjectsPage() {
               const st = STATUS_CFG[project.status] ?? STATUS_CFG.archived
 
               return (
-                <div key={project.id} className="proj-row" style={{ display: 'flex', alignItems: 'center' }}>
+                <div key={project.id} className="proj-row">
                   <Link href={`/projects/${project.id}`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', textDecoration: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
                       <div className="proj-icon">
@@ -126,4 +125,3 @@ export default async function ProjectsPage() {
     </>
   )
 }
-
