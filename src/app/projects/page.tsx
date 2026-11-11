@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Plus, FolderOpen, ChevronRight, AlertTriangle, Flame } from 'lucide-react'
+import DeleteProjectButton from '@/components/DeleteProjectButton'
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
   in_progress: { label: 'En curso',   color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
@@ -84,36 +85,41 @@ export default async function ProjectsPage() {
               const st = STATUS_CFG[project.status] ?? STATUS_CFG.archived
 
               return (
-                <Link key={project.id} href={`/projects/${project.id}`} className="proj-row">
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                    <div className="proj-icon">
-                      <FolderOpen size={17} color="#60a5fa" />
-                    </div>
-                    <div>
-                      <p className="proj-name">{project.name}</p>
-                      <p className="proj-meta">{orgName} · {TYPE_LABEL[project.type] ?? project.type}</p>
-                      <div className="proj-badges">
-                        {critical > 0 && (
-                          <span className="badge badge-critical">
-                            <Flame size={9} style={{ display: 'inline', marginRight: 3 }} />
-                            {critical} crít.
-                          </span>
-                        )}
-                        {high > 0 && (
-                          <span className="badge badge-high">
-                            <AlertTriangle size={9} style={{ display: 'inline', marginRight: 3 }} />
-                            {high} alto{high > 1 ? 's' : ''}
-                          </span>
-                        )}
-                        <span className="badge-count">{findings.length} hallazgos</span>
+                <div key={project.id} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Link href={`/projects/${project.id}`} className="proj-row" style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                      <div className="proj-icon">
+                        <FolderOpen size={17} color="#60a5fa" />
+                      </div>
+                      <div>
+                        <p className="proj-name">{project.name}</p>
+                        <p className="proj-meta">{orgName} · {TYPE_LABEL[project.type] ?? project.type}</p>
+                        <div className="proj-badges">
+                          {critical > 0 && (
+                            <span className="badge badge-critical">
+                              <Flame size={9} style={{ display: 'inline', marginRight: 3 }} />
+                              {critical} crít.
+                            </span>
+                          )}
+                          {high > 0 && (
+                            <span className="badge badge-high">
+                              <AlertTriangle size={9} style={{ display: 'inline', marginRight: 3 }} />
+                              {high} alto{high > 1 ? 's' : ''}
+                            </span>
+                          )}
+                          <span className="badge-count">{findings.length} hallazgos</span>
+                        </div>
                       </div>
                     </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span className="status-pill" style={{ background: st.bg, color: st.color }}>{st.label}</span>
+                      <ChevronRight size={15} color="rgba(255,255,255,0.2)" />
+                    </div>
+                  </Link>
+                  <div style={{ paddingRight: 12 }}>
+                    <DeleteProjectButton projectId={project.id} projectName={project.name} />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span className="status-pill" style={{ background: st.bg, color: st.color }}>{st.label}</span>
-                    <ChevronRight size={15} color="rgba(255,255,255,0.2)" />
-                  </div>
-                </Link>
+                </div>
               )
             })}
           </div>
