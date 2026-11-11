@@ -332,6 +332,7 @@ export default function ImportPage() {
   const [errMsg,   setErrMsg]   = useState('')
   const [fileName, setFileName] = useState('')
   const [imported, setImported] = useState(0)
+  const [importErrors, setImportErrors] = useState<string[]>([])
 
   function handleFile(file: File) {
     setFileName(file.name)
@@ -360,17 +361,31 @@ export default function ImportPage() {
 
   async function doImport() {
     setStatus('importing')
+    setImportErrors([])
     const toImport = findings.filter((_, i) => selected.has(i))
     let count = 0
+    const errors: string[] = []
     for (const f of toImport) {
-      const res = await fetch(`/api/projects/${params.id}/findings/import`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(f),
-      })
-      if (res.ok) count++
+      try {
+        const res = await fetch(`/api/projects/${params.id}/findings/import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(f),
+        })
+        if (res.ok) {
+          count++
+        } else {
+          const data = await res.json().catch(() => ({}))
+          const msg = data.hint || data.error || `Error HTTP ${res.status}`
+          errors.push(`"${f.title.slice(0, 40)}": ${msg}`)
+          console.error('Import failed for finding:', f.title, data)
+        }
+      } catch (err) {
+        errors.push(`"${f.title.slice(0, 40)}": Error de red`)
+      }
     }
     setImported(count)
+    setImportErrors(errors)
     setStatus('done')
   }
 
@@ -467,7 +482,24 @@ export default function ImportPage() {
           <div className="done-card">
             <CheckCircle2 size={44} color="#4ade80" className="done-icon" />
             <h2 className="done-title">{imported} hallazgo{imported !== 1 ? 's' : ''} importado{imported !== 1 ? 's' : ''}</h2>
-            <p className="done-sub">Los hallazgos se añadieron correctamente al proyecto.</p>
+            <p className="done-sub">
+              {imported > 0
+                ? 'Los hallazgos se añadieron correctamente al proyecto.'
+                : 'No se pudo importar ningún hallazgo.'}
+            </p>
+            {importErrors.length > 0 && (
+              <div style={{ background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, textAlign: 'left' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#fca5a5', marginBottom: 8 }}>
+                  ⚠️ {importErrors.length} hallazgo{importErrors.length !== 1 ? 's' : ''} no se pudo{importErrors.length !== 1 ? 'eron' : ''} importar:
+                </p>
+                {importErrors.slice(0, 3).map((e, i) => (
+                  <p key={i} style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', marginBottom: 3, fontFamily: 'monospace' }}>{e}</p>
+                ))}
+                {importErrors.length > 3 && (
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,.3)' }}>…y {importErrors.length - 3} más. Ver consola del navegador para detalles.</p>
+                )}
+              </div>
+            )}
             <div className="done-btns">
               <Link href={`/projects/${params.id}/findings`} className="btn-go btn-primary">Ver hallazgos</Link>
               <button className="btn-go btn-ghost" onClick={reset}>Importar más</button>
