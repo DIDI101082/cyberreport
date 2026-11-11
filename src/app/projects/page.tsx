@@ -16,17 +16,13 @@ const TYPE_LABEL: Record<string, string> = {
 export default async function ProjectsPage() {
   const supabase = await createClient()
 
-  // Auth + tenant isolation
+  // Auth check — tenant isolation is handled by RLS (projects_all policy uses get_tenant_id())
   const { data: { user } } = await supabase.auth.getUser()
-  const tenantId = user
-    ? (await supabase.from('profiles').select('tenant_id').eq('id', user.id).single()).data?.tenant_id ?? null
-    : null
 
-  const { data: projects } = tenantId
+  const { data: projects } = user
     ? await supabase
         .from('projects')
         .select('*, organization:organizations(name), findings(severity)')
-        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
     : { data: [] }
 
