@@ -23,7 +23,7 @@ export async function POST(
 
     const affectedEndpoint: string = body.affected_endpoint ?? ''
 
-    const { error } = await supabase.from('findings').insert({
+    const insertData = {
       tenant_id:           profile?.tenant_id ?? null,
       project_id:          params.id,
       title:               body.title               ?? 'Sin título',
@@ -39,11 +39,25 @@ export async function POST(
       cwe_id:              body.cwe_id || null,
       cvss_score:          body.cvss_score           ?? null,
       cvss_vector:         body.cvss_vector          ?? null,
-    })
+    }
+
+    const { error } = await supabase.from('findings').insert(insertData)
 
     if (error) {
-      console.error('Import finding error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Import finding error:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        tenant_id: profile?.tenant_id,
+        project_id: params.id,
+      })
+      return NextResponse.json({
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details
+      }, { status: 500 })
     }
 
     return NextResponse.json({ ok: true })
