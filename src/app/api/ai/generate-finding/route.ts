@@ -91,23 +91,29 @@ async function generateWithGLM5(title: string, severity: string, category: strin
       body: JSON.stringify({
         model: GLM_MODEL,
         messages: [
-          { role: 'system', content: 'Eres un asistente de ciberseguridad. Responde SOLO con JSON válido, sin markdown, sin bloques de código, sin texto adicional.' },
+          { role: 'system', content: 'Eres un asistente de ciberseguridad. Responde SOLO con JSON válido, sin markdown, sin bloques de código, sin texto adicional. No pienses paso a paso, responde directamente con el JSON.' },
           { role: 'user', content: buildPrompt(title, severity, category) },
         ],
-        max_tokens: 1024,
+        max_tokens: 4096,
       }),
     })
 
     if (res.ok) {
       const data = await res.json()
-      const text = data.choices?.[0]?.message?.content ?? ''
-      if (!text) {
-        throw new Error(`GLM respondió vacío. Respuesta completa: ${JSON.stringify(data).substring(0, 300)}`)
+      const msg = data.choices?.[0]?.message
+      // GLM-4.7 es modelo de razonamiento: la respuesta puede estar en content o reasoning_content
+      const text = msg?.content || ''
+      const reasoning = msg?.reasoning_content || ''
+
+      // Intentar primero con content, luego con reasoning_content
+      const source = text || reasoning
+      if (!source) {
+        throw new Error(`GLM respondió vacío. Respuesta: ${JSON.stringify(data).substring(0, 300)}`)
       }
       try {
-        return extractJson(text)
+        return extractJson(source)
       } catch (e) {
-        throw new Error(`GLM respondió pero no JSON válido. Primeros 300 chars: ${text.substring(0, 300)}`)
+        throw new Error(`GLM no devolvió JSON válido. Primeros 300 chars: ${source.substring(0, 300)}`)
       }
     }
 
@@ -154,3 +160,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
+
