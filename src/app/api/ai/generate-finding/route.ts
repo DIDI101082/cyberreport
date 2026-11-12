@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // GLM-5 (Zhipu AI) — API compatible con OpenAI
-const ZHIPU_API_URL = 'https://api.z.ai/api/paas/v4/chat/completions'
+const ZHIPU_API_URL = 'https://api.z.ai/v1/chat/completions'
 
 const severityMap: Record<string, string> = {
   critical: 'CRÍTICA',
