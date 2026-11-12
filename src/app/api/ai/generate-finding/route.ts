@@ -28,9 +28,21 @@ Solo el JSON, sin markdown ni texto adicional.`
 }
 
 function extractJson(text: string) {
-  const match = text.match(/\{[\s\S]*\}/)
-  if (!match) throw new Error('Respuesta IA inválida')
-  return JSON.parse(match[0])
+  // Limpiar bloques de código markdown (```json ... ``` o ``` ... ```)
+  let cleaned = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim()
+
+  const match = cleaned.match(/\{[\s\S]*\}/)
+  if (!match) {
+    console.error('extractJson: no se encontró JSON en:', text.substring(0, 500))
+    throw new Error('Respuesta IA inválida')
+  }
+
+  try {
+    return JSON.parse(match[0])
+  } catch {
+    console.error('extractJson: JSON malformado:', match[0].substring(0, 500))
+    throw new Error('Respuesta IA inválida (JSON malformado)')
+  }
 }
 
 async function generateWithAnthropic(title: string, severity: string, category: string) {
@@ -120,15 +132,4 @@ export async function POST(req: NextRequest) {
     if (provider === 'gemini') {
       parsed = await generateWithGemini(title, severity ?? 'high', category ?? 'web')
     } else if (provider === 'glm5') {
-      parsed = await generateWithGLM5(title, severity ?? 'high', category ?? 'web')
-    } else {
-      parsed = await generateWithAnthropic(title, severity ?? 'high', category ?? 'web')
-    }
-
-    return NextResponse.json(parsed)
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Error interno'
-    console.error('Error generando finding con IA:', msg)
-    return NextResponse.json({ error: msg }, { status: 500 })
-  }
-}
+      parsed = await generateWi
