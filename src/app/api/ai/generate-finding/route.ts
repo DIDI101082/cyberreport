@@ -66,7 +66,7 @@ async function generateWithGLM5(title: string, severity: string, category: strin
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'glm-4-flash',
+      model: 'glm-4.7-flash',
       messages: [{ role: 'user', content: buildPrompt(title, severity, category) }],
       max_tokens: 1024,
     }),
