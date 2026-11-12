@@ -4,9 +4,6 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// GLM-5 (Zhipu AI) — API compatible con OpenAI
-const ZHIPU_API_URL = 'https://api.z.ai/api/paas/v4/chat/completions'
-
 const severityMap: Record<string, string> = {
   critical: 'CRÍTICA',
   high: 'ALTA',
@@ -55,45 +52,123 @@ async function generateWithGemini(title: string, severity: string, category: str
   return extractJson(result.response.text())
 }
 
-// Intenta múltiples nombres de modelo porque Z.ai acepta distintos formatos
-const GLM_MODEL_NAMES = ['glm-4.7-flash', 'GLM-4.7-Flash', 'glm-4-flash', 'glm-4.5-flash']
+// ─── GLM / Zhipu AI ────────────────────────────────────────────────
+
+const GLM_ENDPOINTS = [
+  'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+  'https://api.z.ai/api/paas/v4/chat/completions',
+]
+
+const GLM_MODEL_NAMES = [
+  'glm-4-flash',
+  'glm-4-flashx',
+  'glm-4.7-flash',
+  'glm-4.5-flash',
+  'GLM-4-Flash',
+]
 
 async function generateWithGLM5(title: string, severity: string, category: string) {
   const apiKey = process.env.ZHIPU_API_KEY
   if (!apiKey) throw new Error('ZHIPU_API_KEY no configurada')
 
-  let lastError = ''
+  const errors: string[] = []
 
-  for (const modelName of GLM_MODEL_NAMES) {
-    const res = await fetch(ZHIPU_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages: [{ role: 'user', content: buildPrompt(title, severity, category) }],
-        max_tokens: 1024,
-      }),
-    })
+  for (const endpoint of GLM_ENDPOINTS) {
+    for (const modelName of GLM_MODEL_NAMES) {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages: [{ role: 'user', content: buildPrompt(title, severity, category) }],
+            max_tokens: 1024,
+          }),
+        })
 
-    if (res.ok) {
-      const data = await res.json()
-      const text = data.choices?.[0]?.message?.content ?? ''
-      return extractJson(text)
+        if (res.ok) {
+          const data = await res.json()
+          const text = data.choices?.[0]?.message?.content ?? ''
+          return extractJson(text)
+        }
+
+        const err = await res.text()
+        errors.push(`[${endpoint}][${modelName}] ${res.status}: ${err.substring(0, 120)}`)
+
+        // Si el error NO es "Unknown Model", no probar más modelos en este endpoint
+        if (!err.includes('1211') && !err.toLowerCase().includes('unknown model')) {
+          break
+        }
+      } catch (fetchErr) {
+        errors.push(`[${endpoint}][${modelName}] FETCH ERROR: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`)
+        break // Error de red → saltar al siguiente endpoint
+      }
     }
-
-    const err = await res.text()
-    // Si el error NO es "Unknown Model", no tiene sentido probar otro nombre
-    if (!err.includes('1211') && !err.toLowerCase().includes('unknown model')) {
-      throw new Error(`GLM API error (${res.status}): ${err}`)
-    }
-    lastError = `${modelName}: ${err}`
   }
 
-  throw new Error(`Ningún modelo GLM funcionó. Último error: ${lastError}`)
+  throw new Error(`GLM: ningún modelo funcionó. Intentos: ${errors.join(' | ')}`)
 }
+
+// ─── GET: Diagnóstico de Z.ai (visitar /api/ai/generate-finding en el navegador) ───
+
+export async function GET() {
+  const apiKey = process.env.ZHIPU_API_KEY
+  const results: { key: string; tests: { endpoint: string; model: string; status: number | string; ok: boolean; body: string }[] } = {
+    key: apiKey ? apiKey.substring(0, 8) + '...' : 'NO CONFIGURADA',
+    tests: [],
+  }
+
+  if (!apiKey) return NextResponse.json(results)
+
+  for (const baseUrl of [
+    'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+    'https://api.z.ai/api/paas/v4/chat/completions',
+    'https://api.z.ai/v1/chat/completions',
+  ]) {
+    for (const model of ['glm-4-flash', 'glm-4-flashx', 'glm-4.7-flash', 'glm-4.5-flash']) {
+      try {
+        const res = await fetch(baseUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'user', content: 'Di hola' }],
+            max_tokens: 5,
+          }),
+        })
+        const body = await res.text()
+        results.tests.push({
+          endpoint: baseUrl,
+          model,
+          status: res.status,
+          ok: res.ok,
+          body: body.substring(0, 200),
+        })
+        // Si funcionó, no probar más modelos en este endpoint
+        if (res.ok) break
+      } catch (err) {
+        results.tests.push({
+          endpoint: baseUrl,
+          model,
+          status: 'FETCH_ERROR',
+          ok: false,
+          body: err instanceof Error ? err.message : String(err),
+        })
+        break
+      }
+    }
+  }
+
+  return NextResponse.json(results)
+}
+
+// ─── POST: Generación de findings ───────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
