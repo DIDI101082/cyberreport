@@ -101,7 +101,14 @@ async function generateWithGLM5(title: string, severity: string, category: strin
     if (res.ok) {
       const data = await res.json()
       const text = data.choices?.[0]?.message?.content ?? ''
-      return extractJson(text)
+      if (!text) {
+        throw new Error(`GLM respondió vacío. Respuesta completa: ${JSON.stringify(data).substring(0, 300)}`)
+      }
+      try {
+        return extractJson(text)
+      } catch (e) {
+        throw new Error(`GLM respondió pero no JSON válido. Primeros 300 chars: ${text.substring(0, 300)}`)
+      }
     }
 
     // Rate limit (429): esperar y reintentar
@@ -147,4 +154,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
-
