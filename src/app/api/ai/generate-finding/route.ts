@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // GLM-5 (Zhipu AI) — API compatible con OpenAI
-const ZHIPU_API_URL = 'https://api.z.ai/v1/chat/completions'
+const ZHIPU_API_URL = 'https://api.z.ai/api/paas/v4/chat/completions'
 
 const severityMap: Record<string, string> = {
   critical: 'CRÍTICA',
@@ -55,31 +55,44 @@ async function generateWithGemini(title: string, severity: string, category: str
   return extractJson(result.response.text())
 }
 
+// Intenta múltiples nombres de modelo porque Z.ai acepta distintos formatos
+const GLM_MODEL_NAMES = ['glm-4.7-flash', 'GLM-4.7-Flash', 'glm-4-flash', 'glm-4.5-flash']
+
 async function generateWithGLM5(title: string, severity: string, category: string) {
   const apiKey = process.env.ZHIPU_API_KEY
   if (!apiKey) throw new Error('ZHIPU_API_KEY no configurada')
 
-  const res = await fetch(ZHIPU_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'glm-4.7-flash',
-      messages: [{ role: 'user', content: buildPrompt(title, severity, category) }],
-      max_tokens: 1024,
-    }),
-  })
+  let lastError = ''
 
-  if (!res.ok) {
+  for (const modelName of GLM_MODEL_NAMES) {
+    const res = await fetch(ZHIPU_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: modelName,
+        messages: [{ role: 'user', content: buildPrompt(title, severity, category) }],
+        max_tokens: 1024,
+      }),
+    })
+
+    if (res.ok) {
+      const data = await res.json()
+      const text = data.choices?.[0]?.message?.content ?? ''
+      return extractJson(text)
+    }
+
     const err = await res.text()
-    throw new Error(`GLM-5 API error (${res.status}): ${err}`)
+    // Si el error NO es "Unknown Model", no tiene sentido probar otro nombre
+    if (!err.includes('1211') && !err.toLowerCase().includes('unknown model')) {
+      throw new Error(`GLM API error (${res.status}): ${err}`)
+    }
+    lastError = `${modelName}: ${err}`
   }
 
-  const data = await res.json()
-  const text = data.choices?.[0]?.message?.content ?? ''
-  return extractJson(text)
+  throw new Error(`Ningún modelo GLM funcionó. Último error: ${lastError}`)
 }
 
 export async function POST(req: NextRequest) {
@@ -106,3 +119,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
+
