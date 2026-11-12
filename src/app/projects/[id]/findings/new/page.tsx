@@ -22,6 +22,7 @@ const CATEGORIES = [
 const AI_PROVIDERS = [
   { value: 'anthropic', label: 'Claude (Anthropic)',    icon: '🟣' },
   { value: 'gemini',    label: 'Gemini Flash (Google)', icon: '🔵' },
+  { value: 'glm5',      label: 'GLM-5 (Zhipu AI)',     icon: '🟢' },
 ]
 
 const SEV_ACTIVE: Record<string, { bg: string; color: string; border: string }> = {
@@ -58,7 +59,7 @@ export default function NewFindingPage() {
   })
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
-  const [aiProvider, setAiProvider] = useState<'anthropic' | 'gemini'>('anthropic')
+  const [aiProvider, setAiProvider] = useState<'anthropic' | 'gemini' | 'glm5'>('anthropic')
   const [providerOpen, setProviderOpen] = useState(false)
   const [aiStatus, setAiStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
