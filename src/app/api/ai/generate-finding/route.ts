@@ -53,106 +53,57 @@ async function generateWithGemini(title: string, severity: string, category: str
 }
 
 // ─── GLM / Zhipu AI ────────────────────────────────────────────────
-// Z.ai tiene 3 endpoints posibles:
-//   1. OpenAI-compatible: https://api.z.ai/api/openai/v1
-//   2. PAAS v4:           https://api.z.ai/api/paas/v4
-//   3. BigModel China:    https://open.bigmodel.cn/api/paas/v4
-// Las API keys de z.ai (internacional) y bigmodel.cn (China) son diferentes.
-// Modelos Flash gratuitos: glm-4-flash, glm-4.7-flash, glm-4.5-flash
+// Modelo confirmado: glm-4.7-flash (devolvió 429 = existe pero rate-limited)
+// Endpoint confirmado: api.z.ai/api/paas/v4
+// Reintentos con espera para manejar el rate limit (429)
 
-const GLM_CONFIGS = [
-  { url: 'https://api.z.ai/api/openai/v1/chat/completions', model: 'glm-4-flash' },
-  { url: 'https://api.z.ai/api/openai/v1/chat/completions', model: 'glm-4.7-flash' },
-  { url: 'https://api.z.ai/api/openai/v1/chat/completions', model: 'GLM-4-Flash' },
-  { url: 'https://api.z.ai/api/paas/v4/chat/completions', model: 'glm-4-flash' },
-  { url: 'https://api.z.ai/api/paas/v4/chat/completions', model: 'glm-4.7-flash' },
-  { url: 'https://api.z.ai/api/paas/v4/chat/completions', model: 'GLM-4-Flash' },
-  { url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4-flash' },
-  { url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4.7-flash' },
-]
+const ZHIPU_URL = 'https://api.z.ai/api/paas/v4/chat/completions'
+const GLM_MODEL = 'glm-4.7-flash'
+const MAX_RETRIES = 3
+
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
 
 async function generateWithGLM5(title: string, severity: string, category: string) {
   const apiKey = process.env.ZHIPU_API_KEY
   if (!apiKey) throw new Error('ZHIPU_API_KEY no configurada')
 
-  const errors: string[] = []
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const res = await fetch(ZHIPU_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: GLM_MODEL,
+        messages: [{ role: 'user', content: buildPrompt(title, severity, category) }],
+        max_tokens: 1024,
+      }),
+    })
 
-  for (const cfg of GLM_CONFIGS) {
-    try {
-      const res = await fetch(cfg.url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: cfg.model,
-          messages: [{ role: 'user', content: buildPrompt(title, severity, category) }],
-          max_tokens: 1024,
-        }),
-      })
+    if (res.ok) {
+      const data = await res.json()
+      const text = data.choices?.[0]?.message?.content ?? ''
+      return extractJson(text)
+    }
 
-      if (res.ok) {
-        const data = await res.json()
-        const text = data.choices?.[0]?.message?.content ?? ''
-        return extractJson(text)
+    // Rate limit (429): esperar y reintentar
+    if (res.status === 429) {
+      if (attempt < MAX_RETRIES) {
+        await sleep(attempt * 3000) // 3s, 6s, 9s
+        continue
       }
-
-      const err = await res.text()
-      const label = cfg.url.includes('openai') ? 'openai' : cfg.url.includes('bigmodel') ? 'cn' : 'paas'
-      errors.push(`${cfg.model}@${label}:${res.status}`)
-    } catch (fetchErr) {
-      const label = cfg.url.includes('openai') ? 'openai' : cfg.url.includes('bigmodel') ? 'cn' : 'paas'
-      errors.push(`${cfg.model}@${label}:NET_ERR`)
+      throw new Error('GLM: rate limit (429). La cuenta gratuita de Z.ai tiene límites de velocidad. Esperá unos segundos y probá de nuevo.')
     }
+
+    // Otro error
+    const err = await res.text()
+    throw new Error(`GLM API error (${res.status}): ${err.substring(0, 200)}`)
   }
 
-  throw new Error(`GLM error: ninguna combinación endpoint+modelo funcionó. Probados: ${errors.join(', ')}`)
-}
-
-// ─── GET: Diagnóstico ───
-
-export async function GET() {
-  const apiKey = process.env.ZHIPU_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'ZHIPU_API_KEY no configurada' })
-
-  const tests: { ep: string; model: string; status: number | string; ok: boolean; body: string }[] = []
-
-  for (const cfg of GLM_CONFIGS) {
-    try {
-      const res = await fetch(cfg.url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: cfg.model,
-          messages: [{ role: 'user', content: 'Hola' }],
-          max_tokens: 5,
-        }),
-      })
-      const body = await res.text()
-      tests.push({
-        ep: cfg.url.replace('https://', '').replace('/chat/completions', ''),
-        model: cfg.model,
-        status: res.status,
-        ok: res.ok,
-        body: body.substring(0, 200),
-      })
-      if (res.ok) break
-    } catch (err) {
-      tests.push({
-        ep: cfg.url.replace('https://', '').replace('/chat/completions', ''),
-        model: cfg.model,
-        status: 'ERR',
-        ok: false,
-        body: err instanceof Error ? err.message : String(err),
-      })
-    }
-  }
-
-  return NextResponse.json({ key: apiKey.substring(0, 8) + '...', tests })
+  throw new Error('GLM: se agotaron los reintentos')
 }
 
 // ─── POST: Generación de findings ───
