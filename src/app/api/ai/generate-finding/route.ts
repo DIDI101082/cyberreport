@@ -53,18 +53,22 @@ async function generateWithGemini(title: string, severity: string, category: str
 }
 
 // ─── GLM / Zhipu AI ────────────────────────────────────────────────
+// Z.ai tiene 3 endpoints posibles:
+//   1. OpenAI-compatible: https://api.z.ai/api/openai/v1
+//   2. PAAS v4:           https://api.z.ai/api/paas/v4
+//   3. BigModel China:    https://open.bigmodel.cn/api/paas/v4
+// Las API keys de z.ai (internacional) y bigmodel.cn (China) son diferentes.
+// Modelos Flash gratuitos: glm-4-flash, glm-4.7-flash, glm-4.5-flash
 
-const GLM_ENDPOINTS = [
-  'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-  'https://api.z.ai/api/paas/v4/chat/completions',
-]
-
-const GLM_MODEL_NAMES = [
-  'glm-4-flash',
-  'glm-4-flashx',
-  'glm-4.7-flash',
-  'glm-4.5-flash',
-  'GLM-4-Flash',
+const GLM_CONFIGS = [
+  { url: 'https://api.z.ai/api/openai/v1/chat/completions', model: 'glm-4-flash' },
+  { url: 'https://api.z.ai/api/openai/v1/chat/completions', model: 'glm-4.7-flash' },
+  { url: 'https://api.z.ai/api/openai/v1/chat/completions', model: 'GLM-4-Flash' },
+  { url: 'https://api.z.ai/api/paas/v4/chat/completions', model: 'glm-4-flash' },
+  { url: 'https://api.z.ai/api/paas/v4/chat/completions', model: 'glm-4.7-flash' },
+  { url: 'https://api.z.ai/api/paas/v4/chat/completions', model: 'GLM-4-Flash' },
+  { url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4-flash' },
+  { url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4.7-flash' },
 ]
 
 async function generateWithGLM5(title: string, severity: string, category: string) {
@@ -73,102 +77,85 @@ async function generateWithGLM5(title: string, severity: string, category: strin
 
   const errors: string[] = []
 
-  for (const endpoint of GLM_ENDPOINTS) {
-    for (const modelName of GLM_MODEL_NAMES) {
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: modelName,
-            messages: [{ role: 'user', content: buildPrompt(title, severity, category) }],
-            max_tokens: 1024,
-          }),
-        })
+  for (const cfg of GLM_CONFIGS) {
+    try {
+      const res = await fetch(cfg.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: cfg.model,
+          messages: [{ role: 'user', content: buildPrompt(title, severity, category) }],
+          max_tokens: 1024,
+        }),
+      })
 
-        if (res.ok) {
-          const data = await res.json()
-          const text = data.choices?.[0]?.message?.content ?? ''
-          return extractJson(text)
-        }
-
-        const err = await res.text()
-        errors.push(`[${endpoint}][${modelName}] ${res.status}: ${err.substring(0, 120)}`)
-
-        // Si el error NO es "Unknown Model", no probar más modelos en este endpoint
-        if (!err.includes('1211') && !err.toLowerCase().includes('unknown model')) {
-          break
-        }
-      } catch (fetchErr) {
-        errors.push(`[${endpoint}][${modelName}] FETCH ERROR: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`)
-        break // Error de red → saltar al siguiente endpoint
+      if (res.ok) {
+        const data = await res.json()
+        const text = data.choices?.[0]?.message?.content ?? ''
+        return extractJson(text)
       }
+
+      const err = await res.text()
+      const label = cfg.url.includes('openai') ? 'openai' : cfg.url.includes('bigmodel') ? 'cn' : 'paas'
+      errors.push(`${cfg.model}@${label}:${res.status}`)
+    } catch (fetchErr) {
+      const label = cfg.url.includes('openai') ? 'openai' : cfg.url.includes('bigmodel') ? 'cn' : 'paas'
+      errors.push(`${cfg.model}@${label}:NET_ERR`)
     }
   }
 
-  throw new Error(`GLM: ningún modelo funcionó. Intentos: ${errors.join(' | ')}`)
+  throw new Error(`GLM error: ninguna combinación endpoint+modelo funcionó. Probados: ${errors.join(', ')}`)
 }
 
-// ─── GET: Diagnóstico de Z.ai (visitar /api/ai/generate-finding en el navegador) ───
+// ─── GET: Diagnóstico ───
 
 export async function GET() {
   const apiKey = process.env.ZHIPU_API_KEY
-  const results: { key: string; tests: { endpoint: string; model: string; status: number | string; ok: boolean; body: string }[] } = {
-    key: apiKey ? apiKey.substring(0, 8) + '...' : 'NO CONFIGURADA',
-    tests: [],
-  }
+  if (!apiKey) return NextResponse.json({ error: 'ZHIPU_API_KEY no configurada' })
 
-  if (!apiKey) return NextResponse.json(results)
+  const tests: { ep: string; model: string; status: number | string; ok: boolean; body: string }[] = []
 
-  for (const baseUrl of [
-    'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-    'https://api.z.ai/api/paas/v4/chat/completions',
-    'https://api.z.ai/v1/chat/completions',
-  ]) {
-    for (const model of ['glm-4-flash', 'glm-4-flashx', 'glm-4.7-flash', 'glm-4.5-flash']) {
-      try {
-        const res = await fetch(baseUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages: [{ role: 'user', content: 'Di hola' }],
-            max_tokens: 5,
-          }),
-        })
-        const body = await res.text()
-        results.tests.push({
-          endpoint: baseUrl,
-          model,
-          status: res.status,
-          ok: res.ok,
-          body: body.substring(0, 200),
-        })
-        // Si funcionó, no probar más modelos en este endpoint
-        if (res.ok) break
-      } catch (err) {
-        results.tests.push({
-          endpoint: baseUrl,
-          model,
-          status: 'FETCH_ERROR',
-          ok: false,
-          body: err instanceof Error ? err.message : String(err),
-        })
-        break
-      }
+  for (const cfg of GLM_CONFIGS) {
+    try {
+      const res = await fetch(cfg.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: cfg.model,
+          messages: [{ role: 'user', content: 'Hola' }],
+          max_tokens: 5,
+        }),
+      })
+      const body = await res.text()
+      tests.push({
+        ep: cfg.url.replace('https://', '').replace('/chat/completions', ''),
+        model: cfg.model,
+        status: res.status,
+        ok: res.ok,
+        body: body.substring(0, 200),
+      })
+      if (res.ok) break
+    } catch (err) {
+      tests.push({
+        ep: cfg.url.replace('https://', '').replace('/chat/completions', ''),
+        model: cfg.model,
+        status: 'ERR',
+        ok: false,
+        body: err instanceof Error ? err.message : String(err),
+      })
     }
   }
 
-  return NextResponse.json(results)
+  return NextResponse.json({ key: apiKey.substring(0, 8) + '...', tests })
 }
 
-// ─── POST: Generación de findings ───────────────────────────────────
+// ─── POST: Generación de findings ───
 
 export async function POST(req: NextRequest) {
   try {
@@ -194,4 +181,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
-
