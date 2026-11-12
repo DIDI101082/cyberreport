@@ -14,7 +14,7 @@ export default function SettingsPage() {
         .sec-icon { width: 32px; height: 32px; border-radius: 9px; background: rgba(37,99,235,0.2); border: 1px solid rgba(59,130,246,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .sec-title { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.9); }
         .sec-desc { font-size: 12px; color: rgba(255,255,255,0.35); margin: 0 0 16px 42px; }
-        .providers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .providers-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
         .provider-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px; }
         .provider-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
         .provider-icon { font-size: 18px; }
@@ -52,7 +52,7 @@ export default function SettingsPage() {
             <div className="sec-icon"><Key size={15} color="#60a5fa" /></div>
             <span className="sec-title">API de Inteligencia Artificial</span>
           </div>
-          <p className="sec-desc">Dos proveedores disponibles. Seleccionás cuál usar al crear cada hallazgo.</p>
+          <p className="sec-desc">Tres proveedores disponibles. Seleccionás cuál usar al crear cada hallazgo.</p>
 
           <div className="providers-grid">
             {/* Anthropic */}
@@ -101,6 +101,29 @@ export default function SettingsPage() {
                 {' '}— 1,500 req/día sin tarjeta
               </p>
             </div>
+            {/* GLM-5 */}
+            <div className="provider-card">
+              <div className="provider-header">
+                <span className="provider-icon">🟢</span>
+                <span className="provider-name">GLM-5 (Zhipu AI)</span>
+                <span className="provider-badge badge-paid">Pago</span>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Variable de entorno</label>
+                <input
+                  type="text"
+                  readOnly
+                  value="ZHIPU_API_KEY"
+                  className="form-input"
+                  style={{ fontFamily: 'monospace', color: '#93c5fd', fontSize: 12 }}
+                />
+              </div>
+              <p className="form-hint">
+                Obtené tu clave en{' '}
+                <a href="https://open.bigmodel.cn" target="_blank" rel="noreferrer">open.bigmodel.cn</a>
+                {' '}— Especializado en ciberseguridad
+              </p>
+            </div>
           </div>
 
           <div className="model-section">
@@ -108,12 +131,13 @@ export default function SettingsPage() {
             <select className="model-select">
               <option value="claude-opus-4-5">🟣 claude-opus-4-5 — Claude (Anthropic)</option>
               <option value="gemini-1.5-flash">🔵 gemini-1.5-flash — Gemini Flash (Google)</option>
+              <option value="glm-5">🟢 glm-5 — GLM-5 (Zhipu AI)</option>
             </select>
           </div>
 
           <div className="env-note">
-            Ambas claves se configuran en Vercel → Settings → Environment Variables<br />
-            (<code>ANTHROPIC_API_KEY</code> y <code>GOOGLE_AI_API_KEY</code>)
+            Las claves se configuran en Vercel → Settings → Environment Variables<br />
+            (<code>ANTHROPIC_API_KEY</code>, <code>GOOGLE_AI_API_KEY</code> y <code>ZHIPU_API_KEY</code>)
           </div>
         </div>
 
