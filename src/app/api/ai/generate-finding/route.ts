@@ -39,7 +39,7 @@ function extractJson(text: string) {
 
   try {
     return JSON.parse(match[0])
-  } catch {
+  } catch (e) {
     console.error('extractJson: JSON malformado:', match[0].substring(0, 500))
     throw new Error('Respuesta IA inválida (JSON malformado)')
   }
@@ -90,7 +90,10 @@ async function generateWithGLM5(title: string, severity: string, category: strin
       },
       body: JSON.stringify({
         model: GLM_MODEL,
-        messages: [{ role: 'user', content: buildPrompt(title, severity, category) }],
+        messages: [
+          { role: 'system', content: 'Eres un asistente de ciberseguridad. Responde SOLO con JSON válido, sin markdown, sin bloques de código, sin texto adicional.' },
+          { role: 'user', content: buildPrompt(title, severity, category) },
+        ],
         max_tokens: 1024,
       }),
     })
@@ -132,4 +135,16 @@ export async function POST(req: NextRequest) {
     if (provider === 'gemini') {
       parsed = await generateWithGemini(title, severity ?? 'high', category ?? 'web')
     } else if (provider === 'glm5') {
-      parsed = await generateWi
+      parsed = await generateWithGLM5(title, severity ?? 'high', category ?? 'web')
+    } else {
+      parsed = await generateWithAnthropic(title, severity ?? 'high', category ?? 'web')
+    }
+
+    return NextResponse.json(parsed)
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Error interno'
+    console.error('Error generando finding con IA:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}
+
