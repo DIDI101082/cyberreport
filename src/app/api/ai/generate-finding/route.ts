@@ -4,6 +4,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+// GLM-5 (Zhipu AI) — API compatible con OpenAI
+const ZHIPU_API_URL = 'https://api.z.ai/api/paas/v4/chat/completions'
+
 const severityMap: Record<string, string> = {
   critical: 'CRÍTICA',
   high: 'ALTA',
@@ -52,6 +55,33 @@ async function generateWithGemini(title: string, severity: string, category: str
   return extractJson(result.response.text())
 }
 
+async function generateWithGLM5(title: string, severity: string, category: string) {
+  const apiKey = process.env.ZHIPU_API_KEY
+  if (!apiKey) throw new Error('ZHIPU_API_KEY no configurada')
+
+  const res = await fetch(ZHIPU_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'glm-5',
+      messages: [{ role: 'user', content: buildPrompt(title, severity, category) }],
+      max_tokens: 1024,
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`GLM-5 API error (${res.status}): ${err}`)
+  }
+
+  const data = await res.json()
+  const text = data.choices?.[0]?.message?.content ?? ''
+  return extractJson(text)
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { title, severity, category, provider = 'anthropic' } = await req.json()
@@ -60,9 +90,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'title requerido' }, { status: 400 })
     }
 
-    const parsed = provider === 'gemini'
-      ? await generateWithGemini(title, severity ?? 'high', category ?? 'web')
-      : await generateWithAnthropic(title, severity ?? 'high', category ?? 'web')
+    let parsed
+    if (provider === 'gemini') {
+      parsed = await generateWithGemini(title, severity ?? 'high', category ?? 'web')
+    } else if (provider === 'glm5') {
+      parsed = await generateWithGLM5(title, severity ?? 'high', category ?? 'web')
+    } else {
+      parsed = await generateWithAnthropic(title, severity ?? 'high', category ?? 'web')
+    }
 
     return NextResponse.json(parsed)
   } catch (error) {
