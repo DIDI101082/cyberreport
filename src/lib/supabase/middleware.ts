@@ -24,9 +24,10 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const isAuthPage = request.nextUrl.pathname.startsWith('/login')
+  const isCallbackPage = request.nextUrl.pathname.startsWith('/auth/callback')
   const isPublicPage = request.nextUrl.pathname === '/'
 
-  if (!user && !isAuthPage && !isPublicPage) {
+  if (!user && !isAuthPage && !isCallbackPage && !isPublicPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
