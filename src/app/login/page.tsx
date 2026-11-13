@@ -2,15 +2,10 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
-  const [loadingEmail, setLoadingEmail] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const router = useRouter()
   const supabase = createClient()
 
   async function handleMicrosoft() {
@@ -24,23 +19,9 @@ export default function LoginPage() {
       },
     })
     if (error) {
-      setError('No se pudo conectar con Microsoft. Usá email y contraseña.')
+      setError('No se pudo conectar con Microsoft. Intentá de nuevo.')
       setLoading(false)
     }
-  }
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault()
-    setLoadingEmail(true)
-    setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError('Email o contraseña incorrectos')
-      setLoadingEmail(false)
-      return
-    }
-    router.push('/dashboard')
-    router.refresh()
   }
 
   return (
@@ -109,7 +90,7 @@ export default function LoginPage() {
           margin-top: 6px;
         }
         .cr-ms-btn {
-          margin-top: 24px;
+          margin-top: 28px;
           width: 100%;
           display: flex;
           align-items: center;
@@ -128,60 +109,6 @@ export default function LoginPage() {
         }
         .cr-ms-btn:hover { opacity: 0.92; }
         .cr-ms-btn:disabled { opacity: 0.65; cursor: not-allowed; }
-        .cr-divider {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-top: 24px;
-          margin-bottom: 20px;
-        }
-        .cr-divider-line {
-          flex: 1;
-          height: 1px;
-          background: rgba(255,255,255,0.15);
-        }
-        .cr-divider-text {
-          font-size: 12px;
-          color: rgba(255,255,255,0.40);
-          white-space: nowrap;
-        }
-        .cr-label {
-          display: block;
-          font-size: 12px;
-          font-weight: 500;
-          color: rgba(255,255,255,0.70);
-          margin-bottom: 6px;
-        }
-        .cr-input {
-          width: 100%;
-          border-radius: 8px;
-          border: 1px solid rgba(255,255,255,0.18);
-          background: rgba(255,255,255,0.10);
-          color: #fff;
-          font-size: 14px;
-          padding: 10px 14px;
-          outline: none;
-          transition: border-color 0.15s;
-          box-sizing: border-box;
-        }
-        .cr-input::placeholder { color: rgba(255,255,255,0.30); }
-        .cr-input:focus { border-color: rgba(255,255,255,0.45); }
-        .cr-field { margin-bottom: 14px; }
-        .cr-submit {
-          width: 100%;
-          border-radius: 12px;
-          background: rgba(255,255,255,0.15);
-          border: 1px solid rgba(255,255,255,0.22);
-          color: #fff;
-          font-weight: 500;
-          font-size: 14px;
-          padding: 12px;
-          cursor: pointer;
-          transition: background 0.15s;
-          margin-top: 6px;
-        }
-        .cr-submit:hover { background: rgba(255,255,255,0.20); }
-        .cr-submit:disabled { opacity: 0.5; cursor: not-allowed; }
         .cr-error {
           font-size: 13px;
           color: #fecaca;
@@ -212,7 +139,7 @@ export default function LoginPage() {
           <p className="cr-subtitle">Ingresá con tu cuenta de la empresa</p>
 
           {/* Microsoft */}
-          <button type="button" onClick={handleMicrosoft} disabled={loading || loadingEmail} className="cr-ms-btn">
+          <button type="button" onClick={handleMicrosoft} disabled={loading} className="cr-ms-btn">
             <svg width="20" height="20" viewBox="0 0 21 21" aria-hidden="true">
               <rect x="1" y="1" width="9" height="9" fill="#F25022" />
               <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
@@ -221,42 +148,6 @@ export default function LoginPage() {
             </svg>
             {loading ? 'Redirigiendo…' : 'Continuar con Microsoft'}
           </button>
-
-          {/* Divisor */}
-          <div className="cr-divider">
-            <span className="cr-divider-line" />
-            <span className="cr-divider-text">o ingresá con email</span>
-            <span className="cr-divider-line" />
-          </div>
-
-          {/* Formulario */}
-          <form onSubmit={handleLogin}>
-            <div className="cr-field">
-              <label className="cr-label">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                placeholder="usuario@empresa.com"
-                className="cr-input"
-              />
-            </div>
-            <div className="cr-field">
-              <label className="cr-label">Contraseña</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                className="cr-input"
-              />
-            </div>
-            <button type="submit" disabled={loadingEmail || loading} className="cr-submit">
-              {loadingEmail ? 'Iniciando sesión…' : 'Iniciar sesión'}
-            </button>
-          </form>
 
           {error && <p role="alert" className="cr-error">{error}</p>}
         </main>
